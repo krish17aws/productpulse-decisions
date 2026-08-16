@@ -14,8 +14,10 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedAgentDecisionRoomRouteImport } from './routes/_authenticated/agent-decision-room'
 import { Route as AuthenticatedCommandCenterRouteImport } from './routes/_authenticated/command-center'
+import { Route as AuthenticatedExperimentsRouteImport } from './routes/_authenticated/experiments'
 import { Route as AuthenticatedInvestigationsRouteImport } from './routes/_authenticated/investigations'
 import { Route as AuthenticatedMetricsRouteImport } from './routes/_authenticated/metrics'
+import { Route as AuthenticatedRecommendationsRouteImport } from './routes/_authenticated/recommendations'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -43,6 +45,12 @@ const AuthenticatedCommandCenterRoute =
     path: '/command-center',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedExperimentsRoute =
+  AuthenticatedExperimentsRouteImport.update({
+    id: '/experiments',
+    path: '/experiments',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedInvestigationsRoute =
   AuthenticatedInvestigationsRouteImport.update({
     id: '/investigations',
@@ -54,22 +62,32 @@ const AuthenticatedMetricsRoute = AuthenticatedMetricsRouteImport.update({
   path: '/metrics',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedRecommendationsRoute =
+  AuthenticatedRecommendationsRouteImport.update({
+    id: '/recommendations',
+    path: '/recommendations',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/agent-decision-room': typeof AuthenticatedAgentDecisionRoomRoute
   '/command-center': typeof AuthenticatedCommandCenterRoute
+  '/experiments': typeof AuthenticatedExperimentsRoute
   '/investigations': typeof AuthenticatedInvestigationsRoute
   '/metrics': typeof AuthenticatedMetricsRoute
+  '/recommendations': typeof AuthenticatedRecommendationsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/agent-decision-room': typeof AuthenticatedAgentDecisionRoomRoute
   '/command-center': typeof AuthenticatedCommandCenterRoute
+  '/experiments': typeof AuthenticatedExperimentsRoute
   '/investigations': typeof AuthenticatedInvestigationsRoute
   '/metrics': typeof AuthenticatedMetricsRoute
+  '/recommendations': typeof AuthenticatedRecommendationsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -78,8 +96,10 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authenticated/agent-decision-room': typeof AuthenticatedAgentDecisionRoomRoute
   '/_authenticated/command-center': typeof AuthenticatedCommandCenterRoute
+  '/_authenticated/experiments': typeof AuthenticatedExperimentsRoute
   '/_authenticated/investigations': typeof AuthenticatedInvestigationsRoute
   '/_authenticated/metrics': typeof AuthenticatedMetricsRoute
+  '/_authenticated/recommendations': typeof AuthenticatedRecommendationsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -88,16 +108,20 @@ export interface FileRouteTypes {
     | '/login'
     | '/agent-decision-room'
     | '/command-center'
+    | '/experiments'
     | '/investigations'
     | '/metrics'
+    | '/recommendations'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
     | '/agent-decision-room'
     | '/command-center'
+    | '/experiments'
     | '/investigations'
     | '/metrics'
+    | '/recommendations'
   id:
     | '__root__'
     | '/'
@@ -105,8 +129,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authenticated/agent-decision-room'
     | '/_authenticated/command-center'
+    | '/_authenticated/experiments'
     | '/_authenticated/investigations'
     | '/_authenticated/metrics'
+    | '/_authenticated/recommendations'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -152,6 +178,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCommandCenterRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/experiments': {
+      id: '/_authenticated/experiments'
+      path: '/experiments'
+      fullPath: '/experiments'
+      preLoaderRoute: typeof AuthenticatedExperimentsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/investigations': {
       id: '/_authenticated/investigations'
       path: '/investigations'
@@ -166,21 +199,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMetricsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/recommendations': {
+      id: '/_authenticated/recommendations'
+      path: '/recommendations'
+      fullPath: '/recommendations'
+      preLoaderRoute: typeof AuthenticatedRecommendationsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAgentDecisionRoomRoute: typeof AuthenticatedAgentDecisionRoomRoute
   AuthenticatedCommandCenterRoute: typeof AuthenticatedCommandCenterRoute
+  AuthenticatedExperimentsRoute: typeof AuthenticatedExperimentsRoute
   AuthenticatedInvestigationsRoute: typeof AuthenticatedInvestigationsRoute
   AuthenticatedMetricsRoute: typeof AuthenticatedMetricsRoute
+  AuthenticatedRecommendationsRoute: typeof AuthenticatedRecommendationsRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAgentDecisionRoomRoute: AuthenticatedAgentDecisionRoomRoute,
   AuthenticatedCommandCenterRoute: AuthenticatedCommandCenterRoute,
+  AuthenticatedExperimentsRoute: AuthenticatedExperimentsRoute,
   AuthenticatedInvestigationsRoute: AuthenticatedInvestigationsRoute,
   AuthenticatedMetricsRoute: AuthenticatedMetricsRoute,
+  AuthenticatedRecommendationsRoute: AuthenticatedRecommendationsRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
