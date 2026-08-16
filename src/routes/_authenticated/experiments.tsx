@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useDataQuery } from "@/lib/use-data";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { Field, PageHeader, StatusBadge, formatDateTime, formatNumber } from "@/components/primitives";
@@ -33,8 +33,8 @@ export const Route = createFileRoute("/_authenticated/experiments")({
 });
 
 function ExperimentsPage() {
-  const experiments = useQuery(experimentsQuery);
-  const results = useQuery(experimentResultsQuery);
+  const experiments = useDataQuery(experimentsQuery);
+  const results = useDataQuery(experimentResultsQuery);
 
   return (
     <div className="space-y-6">

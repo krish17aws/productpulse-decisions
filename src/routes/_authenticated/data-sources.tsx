@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useDataQuery } from "@/lib/use-data";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Bar,
@@ -71,9 +71,9 @@ const PROVENANCE: { name: string; origin: "public" | "synthetic"; note: string }
 ];
 
 function DataSourcesPage() {
-  const registry = useQuery(datasetRegistryQuery);
-  const distribution = useQuery(eventDistributionQuery);
-  const daily = useQuery(sourceDailyMetricsQuery);
+  const registry = useDataQuery(datasetRegistryQuery);
+  const distribution = useDataQuery(eventDistributionQuery);
+  const daily = useDataQuery(sourceDailyMetricsQuery);
 
   const totalEvents = (distribution.data ?? []).reduce(
     (sum, row) => sum + (Number(row.event_count) || 0),

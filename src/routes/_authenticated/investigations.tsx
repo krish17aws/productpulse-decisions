@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useDataQuery } from "@/lib/use-data";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
@@ -44,7 +44,7 @@ export const Route = createFileRoute("/_authenticated/investigations")({
 });
 
 function InvestigationsPage() {
-  const { data, isPending, isError, refetch } = useQuery(investigationsQuery);
+  const { data, isPending, isError, refetch } = useDataQuery(investigationsQuery);
   const [search, setSearch] = useState("");
   const [severity, setSeverity] = useState("all");
   const [status, setStatus] = useState("all");
@@ -186,10 +186,7 @@ function InvestigationDrawer({
   investigation: DashboardInvestigation | null;
   onClose: () => void;
 }) {
-  const { data, isPending, isError, refetch } = useQuery({
-    ...agentActivityQuery,
-    enabled: Boolean(investigation),
-  });
+  const { data, isPending, isError, refetch } = useDataQuery(agentActivityQuery, { enabled: Boolean(investigation) });
 
   const findings = (data ?? []).filter(
     (a) => !investigation || a.investigation_id === investigation.id,

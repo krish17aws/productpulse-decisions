@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useDataQuery } from "@/lib/use-data";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import {
@@ -42,8 +42,8 @@ export const Route = createFileRoute("/_authenticated/metrics")({
 });
 
 function MetricsPage() {
-  const ts = useQuery(timeseriesQuery);
-  const kpis = useQuery(kpiQuery);
+  const ts = useDataQuery(timeseriesQuery);
+  const kpis = useDataQuery(kpiQuery);
   const [selected, setSelected] = useState<string | null>(null);
 
   const rows = (ts.data ?? []) as Record<string, unknown>[];

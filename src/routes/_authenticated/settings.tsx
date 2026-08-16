@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useDataQuery } from "@/lib/use-data";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { Field, PageHeader, StatusBadge, formatDateTime } from "@/components/primitives";
@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_authenticated/settings")({
 
 function SettingsPage() {
   const { user } = useAuth();
-  const settings = useQuery(demoSettingsQuery);
+  const settings = useDataQuery(demoSettingsQuery);
   const active = settings.data?.[0];
 
   return (

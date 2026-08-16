@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useDataQuery } from "@/lib/use-data";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { Field, PageHeader, StatusBadge, formatDateTime, formatNumber } from "@/components/primitives";
@@ -31,8 +31,8 @@ function confidencePercent(value?: number | null) {
 }
 
 function AgentDecisionRoom() {
-  const agents = useQuery(agentActivityQuery);
-  const hypotheses = useQuery(hypothesesQuery);
+  const agents = useDataQuery(agentActivityQuery);
+  const hypotheses = useDataQuery(hypothesesQuery);
 
   return (
     <div className="space-y-6">
