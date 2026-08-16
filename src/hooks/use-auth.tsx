@@ -2,6 +2,7 @@ import type { Session, User } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
 import { externalSupabase as supabase } from "@/integrations/supabase/external-client";
+import { supabaseConfigured } from "@/lib/supabase-status";
 
 interface AuthValue {
   session: Session | null;
