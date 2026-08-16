@@ -24,7 +24,13 @@ export function LoadingCards({ count = 4 }: { count?: number }) {
   );
 }
 
-export function ErrorBlock({ onRetry, message }: { onRetry?: () => void; message?: string }) {
+export function ErrorBlock({
+  onRetry,
+  message,
+}: {
+  onRetry?: (() => void) | undefined;
+  message?: string | undefined;
+}) {
   return (
     <div className="panel flex flex-col items-center gap-3 p-8 text-center" role="alert">
       <AlertTriangle className="size-6 text-destructive" aria-hidden />
@@ -67,10 +73,10 @@ export function QueryBoundary<T>({
   isPending: boolean;
   isError: boolean;
   data: T[] | undefined;
-  refetch?: () => void;
+  refetch?: (() => void) | undefined;
   emptyTitle: string;
   emptyDescription: string;
-  loading?: ReactNode;
+  loading?: ReactNode | undefined;
   children: (rows: T[]) => ReactNode;
 }) {
   if (isPending) return <>{loading ?? <LoadingBlock />}</>;
