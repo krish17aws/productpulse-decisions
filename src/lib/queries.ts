@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { supabase } from "@/integrations/supabase/client";
+import { externalSupabase as supabase } from "@/integrations/supabase/external-client";
 import { supabaseConfigured } from "@/lib/supabase-status";
 import type {
   DashboardAgentActivity,
