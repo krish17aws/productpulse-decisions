@@ -134,7 +134,7 @@ function AgentDecisionRoom() {
                   <article key={h.id} className="panel space-y-3 p-5">
                     <div className="flex items-start justify-between gap-2">
                       <h3 className="text-sm font-semibold">
-                        {h.hypothesis ?? h.title ?? "Hypothesis"}
+                        {h.hypothesis ?? (h["title"] as string | undefined) ?? "Hypothesis"}
                       </h3>
                       <StatusBadge value={h.status} />
                     </div>

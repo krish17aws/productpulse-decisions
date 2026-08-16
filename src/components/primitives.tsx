@@ -27,9 +27,9 @@ export function StatusBadge({
   tone,
   className,
 }: {
-  value?: string | null;
-  tone?: Tone;
-  className?: string;
+  value?: string | null | undefined;
+  tone?: Tone | undefined;
+  className?: string | undefined;
 }) {
   const label = value ?? "unknown";
   return (
@@ -67,7 +67,7 @@ export function PageHeader({
 }: {
   title: string;
   description: string;
-  actions?: ReactNode;
+  actions?: ReactNode | undefined;
 }) {
   return (
     <header className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">

@@ -12,7 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as AuthenticatedAgentDecisionRoomRouteImport } from './routes/_authenticated/agent-decision-room'
 import { Route as AuthenticatedCommandCenterRouteImport } from './routes/_authenticated/command-center'
+import { Route as AuthenticatedInvestigationsRouteImport } from './routes/_authenticated/investigations'
 import { Route as AuthenticatedMetricsRouteImport } from './routes/_authenticated/metrics'
 
 const IndexRoute = IndexRouteImport.update({
@@ -29,10 +31,22 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAgentDecisionRoomRoute =
+  AuthenticatedAgentDecisionRoomRouteImport.update({
+    id: '/agent-decision-room',
+    path: '/agent-decision-room',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedCommandCenterRoute =
   AuthenticatedCommandCenterRouteImport.update({
     id: '/command-center',
     path: '/command-center',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedInvestigationsRoute =
+  AuthenticatedInvestigationsRouteImport.update({
+    id: '/investigations',
+    path: '/investigations',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedMetricsRoute = AuthenticatedMetricsRouteImport.update({
@@ -44,13 +58,17 @@ const AuthenticatedMetricsRoute = AuthenticatedMetricsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/agent-decision-room': typeof AuthenticatedAgentDecisionRoomRoute
   '/command-center': typeof AuthenticatedCommandCenterRoute
+  '/investigations': typeof AuthenticatedInvestigationsRoute
   '/metrics': typeof AuthenticatedMetricsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/agent-decision-room': typeof AuthenticatedAgentDecisionRoomRoute
   '/command-center': typeof AuthenticatedCommandCenterRoute
+  '/investigations': typeof AuthenticatedInvestigationsRoute
   '/metrics': typeof AuthenticatedMetricsRoute
 }
 export interface FileRoutesById {
@@ -58,20 +76,36 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/login': typeof LoginRoute
+  '/_authenticated/agent-decision-room': typeof AuthenticatedAgentDecisionRoomRoute
   '/_authenticated/command-center': typeof AuthenticatedCommandCenterRoute
+  '/_authenticated/investigations': typeof AuthenticatedInvestigationsRoute
   '/_authenticated/metrics': typeof AuthenticatedMetricsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/command-center' | '/metrics'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/agent-decision-room'
+    | '/command-center'
+    | '/investigations'
+    | '/metrics'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/command-center' | '/metrics'
+  to:
+    | '/'
+    | '/login'
+    | '/agent-decision-room'
+    | '/command-center'
+    | '/investigations'
+    | '/metrics'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/login'
+    | '/_authenticated/agent-decision-room'
     | '/_authenticated/command-center'
+    | '/_authenticated/investigations'
     | '/_authenticated/metrics'
   fileRoutesById: FileRoutesById
 }
@@ -104,11 +138,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/agent-decision-room': {
+      id: '/_authenticated/agent-decision-room'
+      path: '/agent-decision-room'
+      fullPath: '/agent-decision-room'
+      preLoaderRoute: typeof AuthenticatedAgentDecisionRoomRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/command-center': {
       id: '/_authenticated/command-center'
       path: '/command-center'
       fullPath: '/command-center'
       preLoaderRoute: typeof AuthenticatedCommandCenterRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/investigations': {
+      id: '/_authenticated/investigations'
+      path: '/investigations'
+      fullPath: '/investigations'
+      preLoaderRoute: typeof AuthenticatedInvestigationsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/metrics': {
@@ -122,12 +170,16 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAgentDecisionRoomRoute: typeof AuthenticatedAgentDecisionRoomRoute
   AuthenticatedCommandCenterRoute: typeof AuthenticatedCommandCenterRoute
+  AuthenticatedInvestigationsRoute: typeof AuthenticatedInvestigationsRoute
   AuthenticatedMetricsRoute: typeof AuthenticatedMetricsRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAgentDecisionRoomRoute: AuthenticatedAgentDecisionRoomRoute,
   AuthenticatedCommandCenterRoute: AuthenticatedCommandCenterRoute,
+  AuthenticatedInvestigationsRoute: AuthenticatedInvestigationsRoute,
   AuthenticatedMetricsRoute: AuthenticatedMetricsRoute,
 }
 
