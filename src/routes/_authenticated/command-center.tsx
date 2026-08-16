@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useDataQuery } from "@/lib/use-data";
 import { createFileRoute } from "@tanstack/react-router";
 import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import {
@@ -97,7 +97,7 @@ function KpiCard({ kpi }: { kpi: DashboardKpiComparison }) {
 }
 
 function ScenarioBanner() {
-  const { data, isPending, isError, refetch } = useQuery(demoSettingsQuery);
+  const { data, isPending, isError, refetch } = useDataQuery(demoSettingsQuery);
   if (isPending) return <LoadingBlock rows={1} />;
   if (isError) return <ErrorBlock onRetry={() => void refetch()} />;
   const settings = data?.[0];
@@ -136,7 +136,7 @@ function pickKey(row: Record<string, unknown>, candidates: string[], fallback?: 
 }
 
 function TrendChart() {
-  const { data, isPending, isError, refetch } = useQuery(timeseriesQuery);
+  const { data, isPending, isError, refetch } = useDataQuery(timeseriesQuery);
   return (
     <div className="panel p-5">
       <h2 className="text-sm font-semibold text-foreground">Metric trend</h2>
@@ -193,7 +193,7 @@ function TrendChart() {
 }
 
 function FunnelPanel() {
-  const { data, isPending, isError, refetch } = useQuery(funnelQuery);
+  const { data, isPending, isError, refetch } = useDataQuery(funnelQuery);
   return (
     <div className="panel p-5">
       <h2 className="text-sm font-semibold text-foreground">Conversion funnel</h2>
@@ -229,7 +229,7 @@ function FunnelPanel() {
 }
 
 function ReleasePanel() {
-  const { data, isPending, isError, refetch } = useQuery(releaseTimelineQuery);
+  const { data, isPending, isError, refetch } = useDataQuery(releaseTimelineQuery);
   return (
     <div className="panel p-5">
       <h2 className="text-sm font-semibold text-foreground">Recent releases</h2>
@@ -270,7 +270,7 @@ function ReleasePanel() {
 }
 
 function CommandCenter() {
-  const { data, isPending, isError, refetch } = useQuery(kpiQuery);
+  const { data, isPending, isError, refetch } = useDataQuery(kpiQuery);
 
   const ordered = (data ?? [])
     .filter((k) => KPI_ORDER.includes(k.metric_name))

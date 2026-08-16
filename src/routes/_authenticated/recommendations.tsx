@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useDataQuery } from "@/lib/use-data";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
@@ -43,7 +43,7 @@ export const Route = createFileRoute("/_authenticated/recommendations")({
 type CommentMode = "reject" | "changes";
 
 function RecommendationsPage() {
-  const { data, isPending, isError, refetch } = useQuery(decisionsQuery);
+  const { data, isPending, isError, refetch } = useDataQuery(decisionsQuery);
   const [dialog, setDialog] = useState<{ id: string; mode: CommentMode } | null>(null);
   const [comment, setComment] = useState("");
   const [commentError, setCommentError] = useState<string | null>(null);

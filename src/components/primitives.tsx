@@ -91,14 +91,27 @@ export function Field({ label, children }: { label: string; children: ReactNode 
   );
 }
 
+/**
+ * Deterministic timestamp formatting.
+ *
+ * Locale- and timezone-dependent output differs between the server render and
+ * the browser, which causes hydration mismatches, so the locale and time zone
+ * are pinned. No Date.now() / Math.random() is involved.
+ */
+const dateTimeFormatter = new Intl.DateTimeFormat("en-GB", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "UTC",
+});
+
 export function formatDateTime(value?: string | null) {
   if (!value) return "—";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return String(value);
-  return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  return `${dateTimeFormatter.format(d)} UTC`;
 }
 
 export function formatNumber(value?: number | null, digits = 2) {
   if (value === null || value === undefined) return "—";
-  return Number(value).toLocaleString(undefined, { maximumFractionDigits: digits });
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: digits }).format(Number(value));
 }

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useDataQuery } from "@/lib/use-data";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { Field, PageHeader, StatusBadge, formatDateTime } from "@/components/primitives";
@@ -27,8 +27,8 @@ export const Route = createFileRoute("/_authenticated/scenario-lab")({
 });
 
 function ScenarioLab() {
-  const scenarios = useQuery(testScenariosQuery);
-  const settings = useQuery(demoSettingsQuery);
+  const scenarios = useDataQuery(testScenariosQuery);
+  const settings = useDataQuery(demoSettingsQuery);
   const active = settings.data?.[0];
 
   return (
