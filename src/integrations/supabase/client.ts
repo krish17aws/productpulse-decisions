@@ -10,8 +10,8 @@ export const supabaseConfigured = Boolean(url && publishableKey);
  * Uses the publishable (anon) key only — never a service-role key.
  */
 export const supabase: SupabaseClient = createClient(
-  url ?? "https://placeholder.supabase.co",
-  publishableKey ?? "placeholder-key",
+  url || "https://placeholder.supabase.co",
+  publishableKey || "placeholder-anon-key",
   {
     auth: {
       persistSession: true,
