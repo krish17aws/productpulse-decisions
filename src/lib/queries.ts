@@ -1,6 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { supabase, supabaseConfigured } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
+import { supabaseConfigured } from "@/lib/supabase-status";
 import type {
   DashboardAgentActivity,
   DashboardDecision,
@@ -31,7 +32,9 @@ async function selectAll<T>(table: string, columns = "*"): Promise<T[]> {
   if (!supabaseConfigured) {
     throw new DataError("The analytics workspace is not connected yet.");
   }
-  const { data, error } = await supabase.from(table).select(columns);
+  const { data, error } = await (supabase.from(table as never) as never as {
+    select: (columns: string) => Promise<{ data: unknown; error: unknown }>;
+  }).select(columns);
   if (error) {
     console.error(`[supabase] select ${table} failed`, error);
     throw new DataError("We couldn't load this data right now.");

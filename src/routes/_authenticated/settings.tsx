@@ -4,7 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Field, PageHeader, StatusBadge, formatDateTime } from "@/components/primitives";
 import { ErrorBlock, LoadingBlock } from "@/components/states";
 import { useAuth } from "@/hooks/use-auth";
-import { supabaseConfigured } from "@/integrations/supabase/client";
+import { supabaseConfigured } from "@/lib/supabase-status";
 import { demoSettingsQuery } from "@/lib/queries";
 
 export const Route = createFileRoute("/_authenticated/settings")({
