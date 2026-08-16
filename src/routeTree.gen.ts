@@ -14,10 +14,13 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedAgentDecisionRoomRouteImport } from './routes/_authenticated/agent-decision-room'
 import { Route as AuthenticatedCommandCenterRouteImport } from './routes/_authenticated/command-center'
+import { Route as AuthenticatedDataSourcesRouteImport } from './routes/_authenticated/data-sources'
 import { Route as AuthenticatedExperimentsRouteImport } from './routes/_authenticated/experiments'
 import { Route as AuthenticatedInvestigationsRouteImport } from './routes/_authenticated/investigations'
 import { Route as AuthenticatedMetricsRouteImport } from './routes/_authenticated/metrics'
 import { Route as AuthenticatedRecommendationsRouteImport } from './routes/_authenticated/recommendations'
+import { Route as AuthenticatedScenarioLabRouteImport } from './routes/_authenticated/scenario-lab'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -45,6 +48,12 @@ const AuthenticatedCommandCenterRoute =
     path: '/command-center',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedDataSourcesRoute =
+  AuthenticatedDataSourcesRouteImport.update({
+    id: '/data-sources',
+    path: '/data-sources',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedExperimentsRoute =
   AuthenticatedExperimentsRouteImport.update({
     id: '/experiments',
@@ -68,26 +77,43 @@ const AuthenticatedRecommendationsRoute =
     path: '/recommendations',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedScenarioLabRoute =
+  AuthenticatedScenarioLabRouteImport.update({
+    id: '/scenario-lab',
+    path: '/scenario-lab',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/agent-decision-room': typeof AuthenticatedAgentDecisionRoomRoute
   '/command-center': typeof AuthenticatedCommandCenterRoute
+  '/data-sources': typeof AuthenticatedDataSourcesRoute
   '/experiments': typeof AuthenticatedExperimentsRoute
   '/investigations': typeof AuthenticatedInvestigationsRoute
   '/metrics': typeof AuthenticatedMetricsRoute
   '/recommendations': typeof AuthenticatedRecommendationsRoute
+  '/scenario-lab': typeof AuthenticatedScenarioLabRoute
+  '/settings': typeof AuthenticatedSettingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/agent-decision-room': typeof AuthenticatedAgentDecisionRoomRoute
   '/command-center': typeof AuthenticatedCommandCenterRoute
+  '/data-sources': typeof AuthenticatedDataSourcesRoute
   '/experiments': typeof AuthenticatedExperimentsRoute
   '/investigations': typeof AuthenticatedInvestigationsRoute
   '/metrics': typeof AuthenticatedMetricsRoute
   '/recommendations': typeof AuthenticatedRecommendationsRoute
+  '/scenario-lab': typeof AuthenticatedScenarioLabRoute
+  '/settings': typeof AuthenticatedSettingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -96,10 +122,13 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authenticated/agent-decision-room': typeof AuthenticatedAgentDecisionRoomRoute
   '/_authenticated/command-center': typeof AuthenticatedCommandCenterRoute
+  '/_authenticated/data-sources': typeof AuthenticatedDataSourcesRoute
   '/_authenticated/experiments': typeof AuthenticatedExperimentsRoute
   '/_authenticated/investigations': typeof AuthenticatedInvestigationsRoute
   '/_authenticated/metrics': typeof AuthenticatedMetricsRoute
   '/_authenticated/recommendations': typeof AuthenticatedRecommendationsRoute
+  '/_authenticated/scenario-lab': typeof AuthenticatedScenarioLabRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -108,20 +137,26 @@ export interface FileRouteTypes {
     | '/login'
     | '/agent-decision-room'
     | '/command-center'
+    | '/data-sources'
     | '/experiments'
     | '/investigations'
     | '/metrics'
     | '/recommendations'
+    | '/scenario-lab'
+    | '/settings'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
     | '/agent-decision-room'
     | '/command-center'
+    | '/data-sources'
     | '/experiments'
     | '/investigations'
     | '/metrics'
     | '/recommendations'
+    | '/scenario-lab'
+    | '/settings'
   id:
     | '__root__'
     | '/'
@@ -129,10 +164,13 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authenticated/agent-decision-room'
     | '/_authenticated/command-center'
+    | '/_authenticated/data-sources'
     | '/_authenticated/experiments'
     | '/_authenticated/investigations'
     | '/_authenticated/metrics'
     | '/_authenticated/recommendations'
+    | '/_authenticated/scenario-lab'
+    | '/_authenticated/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -178,6 +216,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCommandCenterRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/data-sources': {
+      id: '/_authenticated/data-sources'
+      path: '/data-sources'
+      fullPath: '/data-sources'
+      preLoaderRoute: typeof AuthenticatedDataSourcesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/experiments': {
       id: '/_authenticated/experiments'
       path: '/experiments'
@@ -206,25 +251,45 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRecommendationsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/scenario-lab': {
+      id: '/_authenticated/scenario-lab'
+      path: '/scenario-lab'
+      fullPath: '/scenario-lab'
+      preLoaderRoute: typeof AuthenticatedScenarioLabRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAgentDecisionRoomRoute: typeof AuthenticatedAgentDecisionRoomRoute
   AuthenticatedCommandCenterRoute: typeof AuthenticatedCommandCenterRoute
+  AuthenticatedDataSourcesRoute: typeof AuthenticatedDataSourcesRoute
   AuthenticatedExperimentsRoute: typeof AuthenticatedExperimentsRoute
   AuthenticatedInvestigationsRoute: typeof AuthenticatedInvestigationsRoute
   AuthenticatedMetricsRoute: typeof AuthenticatedMetricsRoute
   AuthenticatedRecommendationsRoute: typeof AuthenticatedRecommendationsRoute
+  AuthenticatedScenarioLabRoute: typeof AuthenticatedScenarioLabRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAgentDecisionRoomRoute: AuthenticatedAgentDecisionRoomRoute,
   AuthenticatedCommandCenterRoute: AuthenticatedCommandCenterRoute,
+  AuthenticatedDataSourcesRoute: AuthenticatedDataSourcesRoute,
   AuthenticatedExperimentsRoute: AuthenticatedExperimentsRoute,
   AuthenticatedInvestigationsRoute: AuthenticatedInvestigationsRoute,
   AuthenticatedMetricsRoute: AuthenticatedMetricsRoute,
   AuthenticatedRecommendationsRoute: AuthenticatedRecommendationsRoute,
+  AuthenticatedScenarioLabRoute: AuthenticatedScenarioLabRoute,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
