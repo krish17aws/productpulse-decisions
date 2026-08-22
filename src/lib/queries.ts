@@ -1,6 +1,7 @@
 import { externalSupabase as supabase } from "@/integrations/supabase/external-client";
 import { supabaseConfigured } from "@/lib/supabase-status";
 import type {
+  AgentFinding,
   DashboardAgentActivity,
   DashboardDecision,
   DashboardFunnel,
@@ -80,6 +81,7 @@ export const hypothesesQuery = tableQuery<Hypothesis>("hypotheses");
 export const decisionsQuery = tableQuery<DashboardDecision>("dashboard_decisions");
 export const experimentsQuery = tableQuery<Experiment>("experiments");
 export const experimentResultsQuery = tableQuery<ExperimentResult>("experiment_results");
+export const agentFindingsQuery = tableQuery<AgentFinding>("agent_findings");
 export const testScenariosQuery = tableQuery<TestScenario>("test_scenarios");
 export const datasetRegistryQuery = tableQuery<DatasetRegistry>("dataset_registry");
 export const eventDistributionQuery = tableQuery<SourceEventDistribution>(

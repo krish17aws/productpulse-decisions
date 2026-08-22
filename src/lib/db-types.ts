@@ -97,23 +97,33 @@ export interface Experiment {
   id: string;
   name?: string | null;
   status?: string | null;
-  decision_id?: string | null;
   recommendation_id?: string | null;
-  success_criteria?: string | null;
-  guardrails?: string | null;
-  final_outcome?: string | null;
+  success_criterion?: string | null;
+  guardrail_metrics?: unknown;
   started_at?: string | null;
-  ended_at?: string | null;
+  completed_at?: string | null;
   [key: string]: unknown;
 }
 
 export interface ExperimentResult {
-  id: string;
   experiment_id?: string | null;
-  variant?: string | null;
   metric_name?: string | null;
-  metric_value?: number | null;
-  sample_size?: number | null;
+  control_value?: number | null;
+  treatment_value?: number | null;
+  relative_uplift?: number | null;
+  sample_size_control?: number | null;
+  sample_size_treatment?: number | null;
+  guardrail_breached?: boolean | null;
+  observed_at?: string | null;
+  [key: string]: unknown;
+}
+
+export interface AgentFinding {
+  investigation_id?: string | null;
+  agent_name?: string | null;
+  finding_summary?: string | null;
+  confidence?: number | null;
+  completed_at?: string | null;
   [key: string]: unknown;
 }
 
