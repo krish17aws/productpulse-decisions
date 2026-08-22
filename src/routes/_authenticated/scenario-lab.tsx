@@ -1,9 +1,19 @@
 import { useDataQuery } from "@/lib/use-data";
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { toast } from "sonner";
 
 import { Field, PageHeader, StatusBadge, formatDateTime } from "@/components/primitives";
 import { ErrorBlock, LoadingBlock, LoadingCards, QueryBoundary } from "@/components/states";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { activateScenario, resetScenario } from "@/lib/actions";
 import { demoSettingsQuery, testScenariosQuery } from "@/lib/queries";
 
@@ -26,10 +36,54 @@ export const Route = createFileRoute("/_authenticated/scenario-lab")({
   component: ScenarioLab,
 });
 
+type Pending = {
+  action: "activate" | "reset";
+  scenarioId: string;
+  label: string;
+};
+
 function ScenarioLab() {
   const scenarios = useDataQuery(testScenariosQuery);
   const settings = useDataQuery(demoSettingsQuery);
   const active = settings.data?.[0];
+
+  const [confirm, setConfirm] = useState<Pending | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [progress, setProgress] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const busyKey = (p: Pending) => `${p.action}:${p.scenarioId}`;
+
+  async function run(pending: Pending) {
+    if (busy) return;
+    setBusy(busyKey(pending));
+    setError(null);
+    try {
+      if (pending.action === "activate") {
+        const { timedOut } = await activateScenario(pending.scenarioId, setProgress);
+        if (timedOut) {
+          toast.info("Still processing", {
+            description: "The investigation continues in the background. Data will refresh.",
+          });
+        } else {
+          toast.success("Investigation complete", {
+            description: "A new recommendation is available.",
+          });
+        }
+      } else {
+        await resetScenario(pending.scenarioId, setProgress);
+        toast.success("Workspace reset requested");
+      }
+      setConfirm(null);
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "The request failed.";
+      setError(message);
+      toast.error("Action failed", { description: message });
+    } finally {
+      setBusy(null);
+      setProgress(null);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -37,7 +91,14 @@ function ScenarioLab() {
         title="Scenario Lab"
         description="Scenario definitions drive synthetic telemetry so detection rules can be exercised end to end."
         actions={
-          <Button variant="outline" size="sm" onClick={() => void resetScenario()}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy !== null}
+            onClick={() =>
+              setConfirm({ action: "reset", scenarioId: "baseline", label: "the whole workspace" })
+            }
+          >
             Reset workspace
           </Button>
         }
@@ -64,6 +125,12 @@ function ScenarioLab() {
         )}
       </div>
 
+      {progress ? (
+        <div className="panel p-4 text-sm text-muted-foreground" role="status" aria-live="polite">
+          {progress}
+        </div>
+      ) : null}
+
       <QueryBoundary
         isPending={scenarios.isPending}
         isError={scenarios.isError}
@@ -77,12 +144,11 @@ function ScenarioLab() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {rows.map((s) => {
               const isActive = active?.active_scenario_id === s.id;
+              const title = s.scenario_name ?? s.name ?? "Scenario";
               return (
                 <article key={s.id} className="panel flex flex-col gap-3 p-5">
                   <div className="flex items-start justify-between gap-2">
-                    <h2 className="text-sm font-semibold">
-                      {s.scenario_name ?? s.name ?? "Scenario"}
-                    </h2>
+                    <h2 className="text-sm font-semibold">{title}</h2>
                     {isActive ? <StatusBadge value="active" tone="success" /> : null}
                   </div>
                   <p className="flex-1 text-sm text-muted-foreground">
@@ -92,11 +158,22 @@ function ScenarioLab() {
                     <Field label="Expected outcome">{s.expected_outcome}</Field>
                   ) : null}
                   <div className="flex gap-2 border-t border-border pt-3">
-                    <Button size="sm" onClick={() => void activateScenario(s.id)}>
-                      Activate
+                    <Button
+                      size="sm"
+                      disabled={busy !== null}
+                      onClick={() =>
+                        setConfirm({ action: "activate", scenarioId: s.id, label: title })
+                      }
+                    >
+                      {busy === `activate:${s.id}` ? "Starting…" : "Activate"}
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => void resetScenario()}>
-                      Reset
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy !== null}
+                      onClick={() => setConfirm({ action: "reset", scenarioId: s.id, label: title })}
+                    >
+                      {busy === `reset:${s.id}` ? "Resetting…" : "Reset"}
                     </Button>
                   </div>
                 </article>
@@ -107,9 +184,58 @@ function ScenarioLab() {
       </QueryBoundary>
 
       <p className="text-xs text-muted-foreground">
-        Activate and Reset are orchestration placeholders — they will call the n8n production
-        webhooks and never write to the database from the browser.
+        Activate and Reset call the n8n production webhooks — the browser never writes to the
+        database.
       </p>
+
+      <Dialog
+        open={Boolean(confirm)}
+        onOpenChange={(open) => {
+          if (!open && !busy) {
+            setConfirm(null);
+            setError(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {confirm?.action === "activate" ? "Activate scenario" : "Reset"}
+            </DialogTitle>
+            <DialogDescription>
+              {confirm?.action === "activate"
+                ? `This starts a signal-detection run for “${confirm.label}”.`
+                : `This resets ${confirm?.label ?? "the workspace"} through the n8n workflow.`}
+            </DialogDescription>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            Scenario ID: <span className="num">{confirm?.scenarioId}</span>
+          </p>
+          {progress ? (
+            <p className="text-sm text-muted-foreground" role="status" aria-live="polite">
+              {progress}
+            </p>
+          ) : null}
+          {error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
+          <DialogFooter>
+            <Button variant="outline" disabled={busy !== null} onClick={() => setConfirm(null)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={busy !== null}
+              onClick={() => {
+                if (confirm) void run(confirm);
+              }}
+            >
+              {busy ? "Working…" : error ? "Retry" : "Confirm"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
