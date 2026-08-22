@@ -63,6 +63,14 @@ function enqueue<T>(query: TableQuery<T>): Promise<T[]> {
   });
 }
 
+const globalListeners = new Set<() => void>();
+
+/** Refetches every mounted query — used after an n8n webhook mutates data. */
+export function refetchAllQueries() {
+  console.info(`[queries] global refetch of ${globalListeners.size} query(ies)`);
+  globalListeners.forEach((listener) => listener());
+}
+
 export function useDataQuery<T>(
   query: TableQuery<T>,
   options?: { enabled?: boolean },
@@ -126,6 +134,13 @@ export function useDataQuery<T>(
   }, [name, enabled, authLoading, session?.user.id ?? null, nonce]);
 
   const refetch = useCallback(() => setNonce((n) => n + 1), []);
+
+  useEffect(() => {
+    globalListeners.add(refetch);
+    return () => {
+      globalListeners.delete(refetch);
+    };
+  }, [refetch]);
 
   return { data, isPending, isError: error !== null, error, refetch };
 }
