@@ -1,48 +1,110 @@
 /**
- * Action-handler placeholders.
+ * UI action handlers.
  *
- * These intentionally do NOT write to Supabase. They will later call the
- * n8n production webhooks that own approval and scenario orchestration.
+ * Every mutation is delegated to the n8n production webhooks — this app never
+ * writes scenario, recommendation, approval or experiment data from the browser.
+ * After a webhook completes we refetch the read-only Supabase views and, for
+ * long-running workflows, poll those same views until the result lands.
  */
-import { toast } from "sonner";
+import {
+  postApprovalDecision,
+  postScenarioAction,
+  pollUntil,
+  type DecisionValue,
+} from "@/lib/n8n";
+import {
+  agentFindingsQuery,
+  decisionsQuery,
+  experimentsQuery,
+  fetchTable,
+} from "@/lib/queries";
+import { refetchAllQueries } from "@/lib/use-data";
 
-export async function approveRecommendation(recommendationId: string): Promise<void> {
-  console.info("[action] approveRecommendation", { recommendationId });
-  toast.success("Approval queued", {
-    description: "This will call the n8n approval webhook once wired up.",
-  });
+export interface ActionProgress {
+  (message: string): void;
 }
 
-export async function rejectRecommendation(
-  recommendationId: string,
-  comment: string,
+/** Activates a scenario, then waits for a new recommendation to appear. */
+export async function activateScenario(
+  scenarioId: string,
+  onProgress?: ActionProgress,
+): Promise<{ timedOut: boolean }> {
+  onProgress?.("Starting investigation…");
+
+  let baselineIds = new Set<string>();
+  try {
+    baselineIds = new Set((await fetchTable(decisionsQuery)).map((d) => d.id));
+  } catch {
+    // A failed baseline read must not block the workflow.
+  }
+
+  await postScenarioAction("activate", scenarioId);
+  refetchAllQueries();
+
+  onProgress?.("Waiting for the investigation to produce a recommendation…");
+  const settled = await pollUntil(
+    async () => {
+      const rows = await fetchTable(decisionsQuery);
+      const isNew = rows.some((d) => !baselineIds.has(d.id));
+      if (isNew) refetchAllQueries();
+      return isNew;
+    },
+    { label: "poll:new-recommendation" },
+  );
+
+  refetchAllQueries();
+  return { timedOut: !settled };
+}
+
+/** Resets a scenario (or the whole workspace with the `baseline` id). */
+export async function resetScenario(
+  scenarioId = "baseline",
+  onProgress?: ActionProgress,
 ): Promise<void> {
-  console.info("[action] rejectRecommendation", { recommendationId, comment });
-  toast.success("Rejection queued", {
-    description: "This will call the n8n approval webhook once wired up.",
-  });
+  onProgress?.("Resetting workspace…");
+  await postScenarioAction("reset", scenarioId);
+  refetchAllQueries();
 }
 
-export async function requestRecommendationChanges(
-  recommendationId: string,
-  comment: string,
-): Promise<void> {
-  console.info("[action] requestRecommendationChanges", { recommendationId, comment });
-  toast.success("Change request queued", {
-    description: "This will call the n8n approval webhook once wired up.",
-  });
-}
+/** Records a human decision, then waits for the experiment outcome. */
+export async function submitRecommendationDecision(input: {
+  recommendationId: string;
+  decision: DecisionValue;
+  reason: string;
+  decidedBy: string;
+  onProgress?: ActionProgress;
+}): Promise<{ timedOut: boolean }> {
+  const { recommendationId, decision, reason, decidedBy, onProgress } = input;
+  onProgress?.(
+    decision === "approved" ? "Recording approval and launching experiment…" : "Recording decision…",
+  );
 
-export async function activateScenario(scenarioId: string): Promise<void> {
-  console.info("[action] activateScenario", { scenarioId });
-  toast.success("Scenario activation queued", {
-    description: "This will call the n8n scenario webhook once wired up.",
-  });
-}
+  await postApprovalDecision({ recommendationId, decision, reason, decidedBy });
+  refetchAllQueries();
 
-export async function resetScenario(): Promise<void> {
-  console.info("[action] resetScenario");
-  toast.success("Reset queued", {
-    description: "This will call the n8n reset webhook once wired up.",
-  });
+  if (decision !== "approved") return { timedOut: false };
+
+  onProgress?.("Waiting for the experiment to complete…");
+  const settled = await pollUntil(
+    async () => {
+      const [experiments, findings] = await Promise.all([
+        fetchTable(experimentsQuery),
+        fetchTable(agentFindingsQuery),
+      ]);
+      const completed = experiments.some(
+        (e) =>
+          e.recommendation_id === recommendationId &&
+          (e.status ?? "").toLowerCase() === "completed",
+      );
+      const outcomeAgent = findings.some((f) =>
+        (f.agent_name ?? "").toLowerCase().includes("outcome monitoring"),
+      );
+      if (completed && outcomeAgent) refetchAllQueries();
+      return completed && outcomeAgent;
+    },
+    { label: "poll:experiment-outcome" },
+  );
+
+  refetchAllQueries();
+  return { timedOut: !settled };
 }
