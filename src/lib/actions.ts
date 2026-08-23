@@ -67,7 +67,9 @@ export async function activateScenario(
         fetchTable(decisionsQuery),
       ]);
       const runId =
-        settings.status === "fulfilled" ? (settings.value[0]?.active_test_run_id ?? null) : null;
+        settings.status === "fulfilled"
+          ? (settings.value[0]?.active_test_run_id ?? null)
+          : null;
       const rows = decisions.status === "fulfilled" ? decisions.value : [];
       const newRecommendation = rows.some((d) => !baselineIds.has(d.id));
       const newRun = runId !== null && runId !== baselineRunId;
@@ -101,7 +103,8 @@ export async function submitRecommendationDecision(input: {
   onProgress?: ActionProgress;
   signal?: AbortSignal;
 }): Promise<{ timedOut: boolean }> {
-  const { recommendationId, decision, reason, decidedBy, onProgress, signal } = input;
+  const { recommendationId, decision, reason, decidedBy, onProgress, signal } =
+    input;
   onProgress?.(
     decision === "approved"
       ? "Recording approval and launching experiment…"
@@ -110,10 +113,23 @@ export async function submitRecommendationDecision(input: {
         : "Recording requested changes…",
   );
 
-  await postApprovalDecision({ recommendationId, decision, reason, decidedBy }, signal);
+  await postApprovalDecision(
+    { recommendationId, decision, reason, decidedBy },
+    signal,
+  );
   refetchAllQueries();
 
   if (decision !== "approved") return { timedOut: false };
+
+  let investigationId: string | null = null;
+  try {
+    const decisions = await fetchTable(decisionsQuery);
+    investigationId =
+      decisions.find((row) => row.id === recommendationId)?.investigation_id ??
+      null;
+  } catch {
+    // The experiment relation is sufficient if the decision view is temporarily unavailable.
+  }
 
   onProgress?.("Waiting for the experiment to complete…");
   const settled = await pollUntil(
@@ -127,8 +143,10 @@ export async function submitRecommendationDecision(input: {
           e.recommendation_id === recommendationId &&
           (e.status ?? "").toLowerCase() === "completed",
       );
-      const outcomeAgent = findings.some((f) =>
-        (f.agent_name ?? "").toLowerCase().includes("outcome monitoring"),
+      const outcomeAgent = findings.some(
+        (f) =>
+          (!investigationId || f.investigation_id === investigationId) &&
+          (f.agent_name ?? "").toLowerCase().includes("outcome monitoring"),
       );
       refetchAllQueries();
       return completed && outcomeAgent;

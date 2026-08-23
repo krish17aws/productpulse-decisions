@@ -3,8 +3,18 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { Field, PageHeader, StatusBadge, formatDateTime } from "@/components/primitives";
-import { ErrorBlock, LoadingBlock, LoadingCards, QueryBoundary } from "@/components/states";
+import {
+  Field,
+  PageHeader,
+  StatusBadge,
+  formatDateTime,
+} from "@/components/primitives";
+import {
+  ErrorBlock,
+  LoadingBlock,
+  LoadingCards,
+  QueryBoundary,
+} from "@/components/states";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,7 +39,8 @@ export const Route = createFileRoute("/_authenticated/scenario-lab")({
       { property: "og:title", content: "Scenario Lab — ProductPulse AI" },
       {
         property: "og:description",
-        content: "Deterministic test scenarios that drive the detection and investigation loop.",
+        content:
+          "Deterministic test scenarios that drive the detection and investigation loop.",
       },
     ],
   }),
@@ -60,10 +71,13 @@ function ScenarioLab() {
     setError(null);
     try {
       if (pending.action === "activate") {
-        const { timedOut } = await activateScenario(pending.scenarioId, setProgress);
+        const { timedOut } = await activateScenario(pending.scenarioId, {
+          onProgress: setProgress,
+        });
         if (timedOut) {
           toast.info("Still processing", {
-            description: "The investigation continues in the background. Data will refresh.",
+            description:
+              "The investigation continues in the background. Data will refresh.",
           });
         } else {
           toast.success("Investigation complete", {
@@ -71,12 +85,13 @@ function ScenarioLab() {
           });
         }
       } else {
-        await resetScenario(pending.scenarioId, setProgress);
+        await resetScenario(pending.scenarioId, { onProgress: setProgress });
         toast.success("Workspace reset requested");
       }
       setConfirm(null);
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "The request failed.";
+      const message =
+        caught instanceof Error ? caught.message : "The request failed.";
       setError(message);
       toast.error("Action failed", { description: message });
     } finally {
@@ -96,7 +111,11 @@ function ScenarioLab() {
             size="sm"
             disabled={busy !== null}
             onClick={() =>
-              setConfirm({ action: "reset", scenarioId: "baseline", label: "the whole workspace" })
+              setConfirm({
+                action: "reset",
+                scenarioId: "baseline",
+                label: "the whole workspace",
+              })
             }
           >
             Reset workspace
@@ -115,18 +134,28 @@ function ScenarioLab() {
         ) : (
           <div className="mt-2 grid gap-3 sm:grid-cols-3">
             <Field label="Scenario ID">
-              <span className="num text-xs">{active?.active_scenario_id ?? "—"}</span>
+              <span className="num text-xs">
+                {active?.active_scenario_id ?? "—"}
+              </span>
             </Field>
             <Field label="Test run">
-              <span className="num text-xs">{active?.active_test_run_id ?? "—"}</span>
+              <span className="num text-xs">
+                {active?.active_test_run_id ?? "—"}
+              </span>
             </Field>
-            <Field label="Activated">{formatDateTime(active?.scenario_activated_at ?? null)}</Field>
+            <Field label="Activated">
+              {formatDateTime(active?.scenario_activated_at ?? null)}
+            </Field>
           </div>
         )}
       </div>
 
       {progress ? (
-        <div className="panel p-4 text-sm text-muted-foreground" role="status" aria-live="polite">
+        <div
+          className="panel p-4 text-sm text-muted-foreground"
+          role="status"
+          aria-live="polite"
+        >
           {progress}
         </div>
       ) : null}
@@ -149,7 +178,9 @@ function ScenarioLab() {
                 <article key={s.id} className="panel flex flex-col gap-3 p-5">
                   <div className="flex items-start justify-between gap-2">
                     <h2 className="text-sm font-semibold">{title}</h2>
-                    {isActive ? <StatusBadge value="active" tone="success" /> : null}
+                    {isActive ? (
+                      <StatusBadge value="active" tone="success" />
+                    ) : null}
                   </div>
                   <p className="flex-1 text-sm text-muted-foreground">
                     {s.description ?? "No description provided."}
@@ -162,7 +193,11 @@ function ScenarioLab() {
                       size="sm"
                       disabled={busy !== null}
                       onClick={() =>
-                        setConfirm({ action: "activate", scenarioId: s.id, label: title })
+                        setConfirm({
+                          action: "activate",
+                          scenarioId: s.id,
+                          label: title,
+                        })
                       }
                     >
                       {busy === `activate:${s.id}` ? "Starting…" : "Activate"}
@@ -171,7 +206,13 @@ function ScenarioLab() {
                       size="sm"
                       variant="outline"
                       disabled={busy !== null}
-                      onClick={() => setConfirm({ action: "reset", scenarioId: s.id, label: title })}
+                      onClick={() =>
+                        setConfirm({
+                          action: "reset",
+                          scenarioId: s.id,
+                          label: title,
+                        })
+                      }
                     >
                       {busy === `reset:${s.id}` ? "Resetting…" : "Reset"}
                     </Button>
@@ -184,8 +225,8 @@ function ScenarioLab() {
       </QueryBoundary>
 
       <p className="text-xs text-muted-foreground">
-        Activate and Reset call the n8n production webhooks — the browser never writes to the
-        database.
+        Activate and Reset call the n8n production webhooks — the browser never
+        writes to the database.
       </p>
 
       <Dialog
@@ -212,7 +253,11 @@ function ScenarioLab() {
             Scenario ID: <span className="num">{confirm?.scenarioId}</span>
           </p>
           {progress ? (
-            <p className="text-sm text-muted-foreground" role="status" aria-live="polite">
+            <p
+              className="text-sm text-muted-foreground"
+              role="status"
+              aria-live="polite"
+            >
               {progress}
             </p>
           ) : null}
@@ -222,7 +267,11 @@ function ScenarioLab() {
             </p>
           ) : null}
           <DialogFooter>
-            <Button variant="outline" disabled={busy !== null} onClick={() => setConfirm(null)}>
+            <Button
+              variant="outline"
+              disabled={busy !== null}
+              onClick={() => setConfirm(null)}
+            >
               Cancel
             </Button>
             <Button

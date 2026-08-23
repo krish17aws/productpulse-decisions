@@ -31,7 +31,10 @@ function Inline({ text }: { text: string }) {
             {token.text}
           </strong>
         ) : token.code ? (
-          <code key={i} className="num rounded bg-secondary px-1 py-0.5 text-[0.85em]">
+          <code
+            key={i}
+            className="num rounded bg-secondary px-1 py-0.5 text-[0.85em]"
+          >
             {token.text}
           </code>
         ) : (
@@ -43,11 +46,22 @@ function Inline({ text }: { text: string }) {
 }
 
 /** Renders Markdown-ish text using the app's own typography. */
-export function MarkdownText({ text, className }: { text: string; className?: string }) {
+export function MarkdownText({
+  text,
+  className,
+}: {
+  text: string;
+  className?: string;
+}) {
   const blocks = parseMarkdownBlocks(text);
   if (!blocks.length) return null;
   return (
-    <div className={cn("space-y-2 text-sm text-muted-foreground [overflow-wrap:anywhere]", className)}>
+    <div
+      className={cn(
+        "space-y-2 text-sm text-muted-foreground [overflow-wrap:anywhere]",
+        className,
+      )}
+    >
       {blocks.map((block, i) => {
         if (block.kind === "heading") {
           return (
@@ -55,7 +69,9 @@ export function MarkdownText({ text, className }: { text: string; className?: st
               key={i}
               className={cn(
                 "font-semibold text-foreground",
-                block.level <= 2 ? "text-sm" : "text-xs uppercase tracking-wide",
+                block.level <= 2
+                  ? "text-sm"
+                  : "text-xs uppercase tracking-wide",
               )}
             >
               <Inline text={block.text} />
@@ -104,7 +120,10 @@ export function ClampedText({
   if (!plain) return null;
   return (
     <p
-      className={cn("text-sm text-muted-foreground [overflow-wrap:anywhere]", className)}
+      className={cn(
+        "text-sm text-muted-foreground [overflow-wrap:anywhere]",
+        className,
+      )}
       style={{
         display: "-webkit-box",
         WebkitBoxOrient: "vertical",
@@ -156,14 +175,21 @@ export function FullAnalysisDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="[overflow-wrap:anywhere]">{title}</DialogTitle>
-          {description ? <DialogDescription>{description}</DialogDescription> : null}
+          <DialogTitle className="[overflow-wrap:anywhere]">
+            {title}
+          </DialogTitle>
+          {description ? (
+            <DialogDescription>{description}</DialogDescription>
+          ) : null}
         </DialogHeader>
         <div className="space-y-4">
           {extra}
           <MarkdownText text={normalized.summary} />
           <EvidenceList label="Evidence" items={normalized.evidence} />
-          <EvidenceList label="Contradicting evidence" items={normalized.contradicting} />
+          <EvidenceList
+            label="Contradicting evidence"
+            items={normalized.contradicting}
+          />
           {normalized.raw && normalized.raw !== normalized.summary ? (
             <details className="rounded-lg border border-border p-3">
               <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-muted-foreground">

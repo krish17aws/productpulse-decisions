@@ -24,9 +24,21 @@ function stripFences(value: string): string {
   return fenced?.[1] ? fenced[1].trim() : trimmed;
 }
 
+function normaliseEscapedMarkdown(value: string): string {
+  return value
+    .replace(/\\n/g, "\n")
+    .replace(/(#{2,6})(?=\S)/g, "$1 ")
+    .replace(/([^\n])\s+(#{2,6}\s+)/g, "$1\n\n$2")
+    .replace(/\s+---\s+/g, "\n\n---\n\n")
+    .trim();
+}
+
 function looksLikeJson(value: string): boolean {
   const v = value.trim();
-  return (v.startsWith("{") && v.endsWith("}")) || (v.startsWith("[") && v.endsWith("]"));
+  return (
+    (v.startsWith("{") && v.endsWith("}")) ||
+    (v.startsWith("[") && v.endsWith("]"))
+  );
 }
 
 function toStringList(value: unknown): string[] {
@@ -55,7 +67,14 @@ function toStringList(value: unknown): string[] {
 }
 
 function pickSummary(obj: Record<string, unknown>): string {
-  const keys = ["finding_summary", "summary", "analysis", "conclusion", "text", "content"];
+  const keys = [
+    "finding_summary",
+    "summary",
+    "analysis",
+    "conclusion",
+    "text",
+    "content",
+  ];
   for (const key of keys) {
     const v = obj[key];
     if (typeof v === "string" && v.trim()) return stripFences(v);
@@ -105,9 +124,11 @@ export function normalizeAiOutput(input: unknown): NormalizedAiOutput {
 
   const confidenceValue = obj["confidence"];
   return {
-    summary: pickSummary(obj),
+    summary: normaliseEscapedMarkdown(pickSummary(obj)),
     evidence: toStringList(obj["evidence"] ?? obj["supporting_evidence"]),
-    contradicting: toStringList(obj["contradicting_evidence"] ?? obj["counter_evidence"]),
+    contradicting: toStringList(
+      obj["contradicting_evidence"] ?? obj["counter_evidence"],
+    ),
     confidence: typeof confidenceValue === "number" ? confidenceValue : null,
     raw,
     structured: true,
@@ -121,7 +142,7 @@ export type MarkdownBlock =
 
 /** Splits Markdown-ish text into simple renderable blocks (no HTML anywhere). */
 export function parseMarkdownBlocks(input: string): MarkdownBlock[] {
-  const text = stripFences(input ?? "");
+  const text = normaliseEscapedMarkdown(stripFences(input ?? ""));
   if (!text.trim()) return [];
   const lines = text.replace(/```[a-z]*\n?/gi, "").split(/\r?\n/);
   const blocks: MarkdownBlock[] = [];
@@ -150,7 +171,11 @@ export function parseMarkdownBlocks(input: string): MarkdownBlock[] {
     if (heading?.[1] && heading[2]) {
       flushParagraph();
       flushList();
-      blocks.push({ kind: "heading", level: heading[1].length, text: heading[2].trim() });
+      blocks.push({
+        kind: "heading",
+        level: heading[1].length,
+        text: heading[2].trim(),
+      });
       continue;
     }
     const bullet = /^[-*•]\s+(.*)$/.exec(trimmed);
@@ -191,10 +216,15 @@ export function parseInline(input: string): InlineToken[] {
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(input)) !== null) {
     if (match.index > lastIndex) {
-      tokens.push({ bold: false, code: false, text: input.slice(lastIndex, match.index) });
+      tokens.push({
+        bold: false,
+        code: false,
+        text: input.slice(lastIndex, match.index),
+      });
     }
     const chunk = match[0];
-    if (chunk.startsWith("`")) tokens.push({ bold: false, code: true, text: chunk.slice(1, -1) });
+    if (chunk.startsWith("`"))
+      tokens.push({ bold: false, code: true, text: chunk.slice(1, -1) });
     else tokens.push({ bold: true, code: false, text: chunk.slice(2, -2) });
     lastIndex = match.index + chunk.length;
   }
@@ -206,7 +236,7 @@ export function parseInline(input: string): InlineToken[] {
 
 /** Plain-text version used for clamped previews. */
 export function toPlainText(input: string): string {
-  return stripFences(input ?? "")
+  return normaliseEscapedMarkdown(stripFences(input ?? ""))
     .replace(/```[a-z]*/gi, "")
     .replace(/^#{1,6}\s+/gm, "")
     .replace(/\*\*([^*]+)\*\*/g, "$1")
@@ -221,10 +251,14 @@ export function toPlainText(input: string): string {
  * Splits a rationale into the main body and an embedded risk review section,
  * detected by a Markdown heading mentioning risk / governance.
  */
-export function splitRiskReview(input: string): { body: string; riskReview: string | null } {
-  const text = stripFences(input ?? "");
+export function splitRiskReview(input: string): {
+  body: string;
+  riskReview: string | null;
+} {
+  const text = normaliseEscapedMarkdown(stripFences(input ?? ""));
   const match = /^#{1,6}\s*.*(risk|governance).*$/im.exec(text);
-  if (!match || match.index === undefined) return { body: text, riskReview: null };
+  if (!match || match.index === undefined)
+    return { body: text, riskReview: null };
   const body = text.slice(0, match.index).trim();
   const riskReview = text.slice(match.index).trim();
   if (!body) return { body: text, riskReview: null };

@@ -74,6 +74,7 @@ export interface Hypothesis {
   description?: string | null;
   confidence?: number | null;
   status?: string | null;
+  is_primary?: boolean | null;
   created_at?: string | null;
   [key: string]: unknown;
 }
