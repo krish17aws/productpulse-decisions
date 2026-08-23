@@ -15,6 +15,7 @@ import {
 import {
   agentFindingsQuery,
   decisionsQuery,
+  demoSettingsQuery,
   experimentsQuery,
   fetchTable,
 } from "@/lib/queries";
@@ -24,32 +25,56 @@ export interface ActionProgress {
   (message: string): void;
 }
 
-/** Activates a scenario, then waits for a new recommendation to appear. */
+export interface ActionOptions {
+  onProgress?: ActionProgress;
+  signal?: AbortSignal;
+}
+
+/** Activates a scenario, then waits for the new run to produce a recommendation. */
 export async function activateScenario(
   scenarioId: string,
-  onProgress?: ActionProgress,
+  options: ActionOptions = {},
 ): Promise<{ timedOut: boolean }> {
+  const { onProgress, signal } = options;
   onProgress?.("Starting investigation…");
 
+  // Capture the current run + recommendations so a NEW result is detectable.
+  let baselineRunId: string | null = null;
   let baselineIds = new Set<string>();
   try {
-    baselineIds = new Set((await fetchTable(decisionsQuery)).map((d) => d.id));
+    const [settings, decisions] = await Promise.allSettled([
+      fetchTable(demoSettingsQuery),
+      fetchTable(decisionsQuery),
+    ]);
+    if (settings.status === "fulfilled") {
+      baselineRunId = settings.value[0]?.active_test_run_id ?? null;
+    }
+    if (decisions.status === "fulfilled") {
+      baselineIds = new Set(decisions.value.map((d) => d.id));
+    }
   } catch {
     // A failed baseline read must not block the workflow.
   }
 
-  await postScenarioAction("activate", scenarioId);
+  await postScenarioAction("activate", scenarioId, signal);
   refetchAllQueries();
 
   onProgress?.("Waiting for the investigation to produce a recommendation…");
   const settled = await pollUntil(
     async () => {
-      const rows = await fetchTable(decisionsQuery);
-      const isNew = rows.some((d) => !baselineIds.has(d.id));
-      if (isNew) refetchAllQueries();
-      return isNew;
+      const [settings, decisions] = await Promise.allSettled([
+        fetchTable(demoSettingsQuery),
+        fetchTable(decisionsQuery),
+      ]);
+      const runId =
+        settings.status === "fulfilled" ? (settings.value[0]?.active_test_run_id ?? null) : null;
+      const rows = decisions.status === "fulfilled" ? decisions.value : [];
+      const newRecommendation = rows.some((d) => !baselineIds.has(d.id));
+      const newRun = runId !== null && runId !== baselineRunId;
+      refetchAllQueries();
+      return newRecommendation && (newRun || baselineRunId === null);
     },
-    { label: "poll:new-recommendation" },
+    { label: "poll:new-recommendation", ...(signal ? { signal } : {}) },
   );
 
   refetchAllQueries();
@@ -59,10 +84,11 @@ export async function activateScenario(
 /** Resets a scenario (or the whole workspace with the `baseline` id). */
 export async function resetScenario(
   scenarioId = "baseline",
-  onProgress?: ActionProgress,
+  options: ActionOptions = {},
 ): Promise<void> {
+  const { onProgress, signal } = options;
   onProgress?.("Resetting workspace…");
-  await postScenarioAction("reset", scenarioId);
+  await postScenarioAction("reset", scenarioId, signal);
   refetchAllQueries();
 }
 
@@ -73,13 +99,18 @@ export async function submitRecommendationDecision(input: {
   reason: string;
   decidedBy: string;
   onProgress?: ActionProgress;
+  signal?: AbortSignal;
 }): Promise<{ timedOut: boolean }> {
-  const { recommendationId, decision, reason, decidedBy, onProgress } = input;
+  const { recommendationId, decision, reason, decidedBy, onProgress, signal } = input;
   onProgress?.(
-    decision === "approved" ? "Recording approval and launching experiment…" : "Recording decision…",
+    decision === "approved"
+      ? "Recording approval and launching experiment…"
+      : decision === "rejected"
+        ? "Recording rejection…"
+        : "Recording requested changes…",
   );
 
-  await postApprovalDecision({ recommendationId, decision, reason, decidedBy });
+  await postApprovalDecision({ recommendationId, decision, reason, decidedBy }, signal);
   refetchAllQueries();
 
   if (decision !== "approved") return { timedOut: false };
@@ -99,10 +130,10 @@ export async function submitRecommendationDecision(input: {
       const outcomeAgent = findings.some((f) =>
         (f.agent_name ?? "").toLowerCase().includes("outcome monitoring"),
       );
-      if (completed && outcomeAgent) refetchAllQueries();
+      refetchAllQueries();
       return completed && outcomeAgent;
     },
-    { label: "poll:experiment-outcome" },
+    { label: "poll:experiment-outcome", ...(signal ? { signal } : {}) },
   );
 
   refetchAllQueries();
