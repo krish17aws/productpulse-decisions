@@ -13,8 +13,19 @@ import {
 import { LoadingCards, QueryBoundary } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { normalizeAiOutput } from "@/lib/ai-output";
-import { agentActivityQuery, hypothesesQuery } from "@/lib/queries";
+import {
+  agentActivityQuery,
+  hypothesesQuery,
+  investigationsQuery,
+} from "@/lib/queries";
 
 export const Route = createFileRoute("/_authenticated/agent-decision-room")({
   head: () => ({
@@ -47,9 +58,29 @@ function confidencePercent(value?: number | null) {
 function AgentDecisionRoom() {
   const agents = useDataQuery(agentActivityQuery);
   const hypotheses = useDataQuery(hypothesesQuery);
+  const investigations = useDataQuery(investigationsQuery);
+  const [selectedInvestigationId, setSelectedInvestigationId] =
+    useState<string>("latest");
   const [selectedAgent, setSelectedAgent] = useState<
     NonNullable<typeof agents.data>[number] | null
   >(null);
+
+  const investigationRows = [...(investigations.data ?? [])].sort((a, b) =>
+    (b.detected_at ?? "").localeCompare(a.detected_at ?? ""),
+  );
+  const effectiveInvestigationId =
+    selectedInvestigationId === "latest"
+      ? investigationRows[0]?.id
+      : selectedInvestigationId;
+  const selectedInvestigation = investigationRows.find(
+    (row) => row.id === effectiveInvestigationId,
+  );
+  const scopedAgents = (agents.data ?? []).filter(
+    (row) => row.investigation_id === effectiveInvestigationId,
+  );
+  const scopedHypotheses = (hypotheses.data ?? []).filter(
+    (row) => row.investigation_id === effectiveInvestigationId,
+  );
 
   return (
     <div className="space-y-6">
@@ -77,13 +108,56 @@ function AgentDecisionRoom() {
         </p>
       </div>
 
+      <div className="panel grid gap-4 p-5 md:grid-cols-[minmax(0,1fr)_minmax(18rem,28rem)] md:items-end">
+        <div>
+          <p className="text-sm font-semibold">Issue context</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Agent findings and hypotheses below are restricted to one
+            investigation, so evidence from different incidents is never mixed.
+          </p>
+        </div>
+        <Select
+          value={selectedInvestigationId}
+          onValueChange={setSelectedInvestigationId}
+        >
+          <SelectTrigger aria-label="Select investigation">
+            <SelectValue placeholder="Select an investigation" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="latest">Latest investigation</SelectItem>
+            {investigationRows.map((row) => (
+              <SelectItem key={row.id} value={row.id}>
+                {row.scenario_name ?? row.title ?? row.id}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {selectedInvestigation ? (
+          <div className="md:col-span-2 flex flex-wrap items-center gap-2 border-t border-border pt-4 text-xs">
+            <span className="font-medium">
+              {selectedInvestigation.scenario_name ??
+                selectedInvestigation.title ??
+                "Investigation"}
+            </span>
+            <StatusBadge value={selectedInvestigation.severity} />
+            <StatusBadge value={selectedInvestigation.status} tone="neutral" />
+            <span className="num break-all text-muted-foreground">
+              {selectedInvestigation.id}
+            </span>
+          </div>
+        ) : null}
+      </div>
+
       <section>
         <h2 className="mb-3 text-sm font-semibold">Agent activity</h2>
         <QueryBoundary
-          isPending={agents.isPending}
-          isError={agents.isError}
-          data={agents.data}
-          refetch={() => void agents.refetch()}
+          isPending={agents.isPending || investigations.isPending}
+          isError={agents.isError || investigations.isError}
+          data={scopedAgents}
+          refetch={() => {
+            void agents.refetch();
+            void investigations.refetch();
+          }}
           loading={<LoadingCards count={6} />}
           emptyTitle="No agent runs yet"
           emptyDescription="No investigation agent has been launched for the active scenario."
@@ -162,10 +236,13 @@ function AgentDecisionRoom() {
       <section>
         <h2 className="mb-3 text-sm font-semibold">Structured hypotheses</h2>
         <QueryBoundary
-          isPending={hypotheses.isPending}
-          isError={hypotheses.isError}
-          data={hypotheses.data}
-          refetch={() => void hypotheses.refetch()}
+          isPending={hypotheses.isPending || investigations.isPending}
+          isError={hypotheses.isError || investigations.isError}
+          data={scopedHypotheses}
+          refetch={() => {
+            void hypotheses.refetch();
+            void investigations.refetch();
+          }}
           emptyTitle="No hypotheses recorded"
           emptyDescription="Root-cause synthesis has not produced hypotheses for this investigation yet."
         >

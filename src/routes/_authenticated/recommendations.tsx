@@ -1,6 +1,6 @@
 import { useDataQuery } from "@/lib/use-data";
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -27,9 +27,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { submitRecommendationDecision } from "@/lib/actions";
-import type { DashboardDecision } from "@/lib/db-types";
+import type {
+  DashboardDecision,
+  DashboardInvestigation,
+} from "@/lib/db-types";
 import type { DecisionValue } from "@/lib/n8n";
-import { decisionsQuery } from "@/lib/queries";
+import { decisionsQuery, investigationsQuery } from "@/lib/queries";
 
 export const Route = createFileRoute("/_authenticated/recommendations")({
   head: () => ({
@@ -55,6 +58,8 @@ const decisionLabel: Record<DecisionValue, string> = {
 
 function RecommendationsPage() {
   const query = useDataQuery(decisionsQuery);
+  const investigations = useDataQuery(investigationsQuery);
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [decisionDialog, setDecisionDialog] = useState<DecisionDialog | null>(
     null,
@@ -70,8 +75,20 @@ function RecommendationsPage() {
   );
 
   const email = user?.email ?? null;
+  const investigationById = useMemo(
+    () =>
+      new Map(
+        (investigations.data ?? []).map((investigation) => [
+          investigation.id,
+          investigation,
+        ]),
+      ),
+    [investigations.data],
+  );
   const actionableRecommendations = query.data?.filter((row) => {
-    const state = (row.approval_state ?? "pending").toLowerCase();
+    const state = (row.approval_state ?? "pending")
+      .toLowerCase()
+      .replace(/[\s-]+/g, "_");
     return (
       !processedIds.has(row.id) &&
       (state === "pending" || state === "pending_approval")
@@ -155,25 +172,61 @@ function RecommendationsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Recommendations"
-        description="AI-synthesised product actions. Nothing ships without explicit human PM approval."
+        description="Decision-ready actions grouped by their originating issue. Nothing ships without explicit human PM approval."
       />
 
+      <div className="panel p-5">
+        <p className="text-sm font-medium">How to read this page</p>
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+          <StatusBadge value="Detected issue" tone="info" />
+          <span className="text-muted-foreground">→</span>
+          <StatusBadge value="Root-cause hypotheses" tone="neutral" />
+          <span className="text-muted-foreground">→</span>
+          <StatusBadge value="Recommended action" tone="warning" />
+          <span className="text-muted-foreground">→</span>
+          <StatusBadge value="PM decision" tone="success" />
+        </div>
+        <p className="mt-3 text-sm text-muted-foreground">
+          A hypothesis is a ranked possible explanation for an issue. It is
+          evidence for the decision—not the action itself. This page only shows
+          pending recommended actions; completed decisions remain in the audit
+          data but leave this queue.
+        </p>
+      </div>
+
       <QueryBoundary
-        isPending={query.isPending}
-        isError={query.isError}
+        isPending={query.isPending || investigations.isPending}
+        isError={query.isError || investigations.isError}
         data={actionableRecommendations}
-        refetch={() => void query.refetch()}
+        refetch={() => {
+          void query.refetch();
+          void investigations.refetch();
+        }}
         loading={<LoadingCards count={3} />}
         emptyTitle="No pending recommendations"
         emptyDescription="All recommendations have been decided, or no investigation has produced a new action yet."
       >
         {(rows) => (
           <div className="space-y-4">
-            {rows.map((row) => (
+            {rows.map((row) => {
+              const investigation = row.investigation_id
+                ? investigationById.get(row.investigation_id)
+                : undefined;
+              return (
               <article
                 key={row.id}
                 className="panel flex min-w-0 flex-col gap-4 p-6"
               >
+                <IssueContext
+                  investigation={investigation}
+                  investigationId={row.investigation_id}
+                  onView={() =>
+                    void navigate({
+                      to: "/investigations",
+                      search: { investigationId: row.investigation_id ?? "" },
+                    } as never)
+                  }
+                />
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <h2 className="max-w-3xl text-base font-semibold [overflow-wrap:anywhere]">
                     {row.recommendation ?? "Recommendation"}
@@ -252,7 +305,8 @@ function RecommendationsPage() {
                   </div>
                 </div>
               </article>
-            ))}
+              );
+            })}
           </div>
         )}
       </QueryBoundary>
@@ -380,6 +434,53 @@ function RecommendationsPage() {
           ) : null
         }
       />
+    </div>
+  );
+}
+
+function IssueContext({
+  investigation,
+  investigationId,
+  onView,
+}: {
+  investigation?: DashboardInvestigation;
+  investigationId?: string | null;
+  onView: () => void;
+}) {
+  const title =
+    investigation?.scenario_name ??
+    investigation?.title ??
+    "Investigation context unavailable";
+
+  return (
+    <div className="rounded-lg border border-blue-200 bg-blue-50/60 p-4 dark:border-blue-900 dark:bg-blue-950/20">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300">
+            Issue this recommendation addresses
+          </p>
+          <p className="mt-1 font-semibold [overflow-wrap:anywhere]">{title}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {investigation?.severity ? (
+              <StatusBadge value={investigation.severity} />
+            ) : null}
+            {investigation?.status ? (
+              <StatusBadge value={investigation.status} tone="neutral" />
+            ) : null}
+            <span className="text-xs text-muted-foreground">
+              Detected {formatDateTime(investigation?.detected_at)}
+            </span>
+          </div>
+          <p className="num mt-2 break-all text-xs text-muted-foreground">
+            Investigation: {investigationId ?? "Not linked"}
+          </p>
+        </div>
+        {investigationId ? (
+          <Button type="button" size="sm" variant="outline" onClick={onView}>
+            View issue
+          </Button>
+        ) : null}
+      </div>
     </div>
   );
 }

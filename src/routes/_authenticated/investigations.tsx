@@ -1,6 +1,6 @@
 import { useDataQuery } from "@/lib/use-data";
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   Field,
@@ -36,6 +36,12 @@ import { normalizeAiOutput } from "@/lib/ai-output";
 import type { DashboardInvestigation } from "@/lib/db-types";
 
 export const Route = createFileRoute("/_authenticated/investigations")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    investigationId:
+      typeof search.investigationId === "string"
+        ? search.investigationId
+        : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Investigations — ProductPulse AI" },
@@ -56,12 +62,19 @@ export const Route = createFileRoute("/_authenticated/investigations")({
 });
 
 function InvestigationsPage() {
+  const { investigationId } = Route.useSearch();
   const { data, isPending, isError, refetch } =
     useDataQuery(investigationsQuery);
   const [search, setSearch] = useState("");
   const [severity, setSeverity] = useState("all");
   const [status, setStatus] = useState("all");
   const [selected, setSelected] = useState<DashboardInvestigation | null>(null);
+
+  useEffect(() => {
+    if (!investigationId || !data) return;
+    const match = data.find((row) => row.id === investigationId);
+    if (match) setSelected(match);
+  }, [data, investigationId]);
 
   const rows = data ?? [];
   const severities = useMemo(
