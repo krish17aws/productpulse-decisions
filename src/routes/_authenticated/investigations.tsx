@@ -54,6 +54,7 @@ import {
   investigationDeletionConfigured,
   postInvestigationDeletion,
 } from "@/lib/n8n";
+import { APP_VERSION } from "@/lib/app-version";
 
 export const Route = createFileRoute("/_authenticated/investigations")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -127,6 +128,13 @@ function InvestigationsPage() {
         description="Every investigation begins with a deterministic rule trigger. Closed and rejected records remain visible as audit history; use the status filter or the controlled delete action when removal is required."
       />
 
+      <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-4 py-2 text-sm">
+        <span className="text-muted-foreground">
+          Release check: this page includes investigation lifecycle controls.
+        </span>
+        <StatusBadge value={`v${APP_VERSION}`} tone="neutral" />
+      </div>
+
       <div className="panel space-y-4 p-5">
         <div className="grid gap-3 sm:grid-cols-3">
           <Input
@@ -188,6 +196,7 @@ function InvestigationsPage() {
                       <TableHead>Detected</TableHead>
                       <TableHead>Findings</TableHead>
                       <TableHead>ID</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -214,6 +223,27 @@ function InvestigationsPage() {
                         </TableCell>
                         <TableCell className="num max-w-[220px] truncate text-xs text-muted-foreground">
                           {r.id}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setSelected(r);
+                            }}
+                            title={
+                              investigationDeletionConfigured
+                                ? "Open the confirmation panel for this investigation"
+                                : "Deletion webhook is not configured; open for setup details"
+                            }
+                          >
+                            <Trash2 className="size-4" />
+                            {investigationDeletionConfigured
+                              ? "Delete"
+                              : "Delete unavailable"}
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
