@@ -65,8 +65,18 @@ function RecommendationsPage() {
   const [requestError, setRequestError] = useState<string | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [processedIds, setProcessedIds] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   const email = user?.email ?? null;
+  const actionableRecommendations = query.data?.filter((row) => {
+    const state = (row.approval_state ?? "pending").toLowerCase();
+    return (
+      !processedIds.has(row.id) &&
+      (state === "pending" || state === "pending_approval")
+    );
+  });
 
   function openDecision(row: DashboardDecision, decision: DecisionValue) {
     if (busy) return;
@@ -119,6 +129,14 @@ function RecommendationsPage() {
             : "Decision recorded",
         );
       }
+      // Hide the completed decision only after n8n accepted it. The row remains
+      // in Supabase for audit history and will stay hidden after the refetch
+      // because its approval_state is no longer actionable.
+      setProcessedIds((current) => {
+        const next = new Set(current);
+        next.add(decisionDialog.row.id);
+        return next;
+      });
       setDecisionDialog(null);
       setReason("");
       setProgress(null);
@@ -143,11 +161,11 @@ function RecommendationsPage() {
       <QueryBoundary
         isPending={query.isPending}
         isError={query.isError}
-        data={query.data}
+        data={actionableRecommendations}
         refetch={() => void query.refetch()}
         loading={<LoadingCards count={3} />}
-        emptyTitle="No recommendations yet"
-        emptyDescription="No investigation has produced a recommended product action so far."
+        emptyTitle="No pending recommendations"
+        emptyDescription="All recommendations have been decided, or no investigation has produced a new action yet."
       >
         {(rows) => (
           <div className="space-y-4">
