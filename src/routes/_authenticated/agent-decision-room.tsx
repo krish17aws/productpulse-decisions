@@ -13,6 +13,7 @@ import {
 import { LoadingCards, QueryBoundary } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { normalizeAiOutput } from "@/lib/ai-output";
 import { agentActivityQuery, hypothesesQuery } from "@/lib/queries";
 
 export const Route = createFileRoute("/_authenticated/agent-decision-room")({
@@ -88,9 +89,10 @@ function AgentDecisionRoom() {
           emptyDescription="No investigation agent has been launched for the active scenario."
         >
           {(rows) => (
-            <div className="grid auto-rows-fr gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid auto-rows-fr gap-4 lg:grid-cols-2">
               {rows.map((a, i) => {
                 const pct = confidencePercent(a.confidence);
+                const summary = normalizeAiOutput(a.finding_summary).summary;
                 return (
                   <article
                     key={a.id ?? i}
@@ -103,9 +105,9 @@ function AgentDecisionRoom() {
                       <StatusBadge value={a.status} />
                     </div>
                     <ClampedText
-                      text={a.finding_summary ?? "No finding summary reported."}
-                      lines={6}
-                      className="min-h-[7.5rem]"
+                      text={summary || "No finding summary reported."}
+                      lines={5}
+                      className="min-h-[6.5rem]"
                     />
                     {a.finding_summary ? (
                       <Button
@@ -118,35 +120,37 @@ function AgentDecisionRoom() {
                         View full analysis
                       </Button>
                     ) : null}
-                    {pct !== null ? (
-                      <div>
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>Confidence</span>
-                          <span className="num">{pct}%</span>
+                    <div className="mt-auto space-y-3">
+                      {pct !== null ? (
+                        <div>
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>Confidence</span>
+                            <span className="num">{pct}%</span>
+                          </div>
+                          <Progress value={pct} className="mt-1 h-1.5" />
                         </div>
-                        <Progress value={pct} className="mt-1 h-1.5" />
-                      </div>
-                    ) : null}
-                    <dl className="mt-auto grid grid-cols-2 gap-3 border-t border-border pt-3 text-xs text-muted-foreground">
-                      <div>
-                        <dt>Records analysed</dt>
-                        <dd className="num text-foreground">
-                          {formatNumber(a.input_record_count, 0)}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt>Started</dt>
-                        <dd className="text-foreground">
-                          {formatDateTime(a.started_at)}
-                        </dd>
-                      </div>
-                      <div className="col-span-2">
-                        <dt>Completed</dt>
-                        <dd className="text-foreground">
-                          {formatDateTime(a.completed_at)}
-                        </dd>
-                      </div>
-                    </dl>
+                      ) : null}
+                      <dl className="grid grid-cols-2 gap-3 border-t border-border pt-3 text-xs text-muted-foreground">
+                        <div>
+                          <dt>Records analysed</dt>
+                          <dd className="num text-foreground">
+                            {formatNumber(a.input_record_count, 0)}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>Started</dt>
+                          <dd className="text-foreground">
+                            {formatDateTime(a.started_at)}
+                          </dd>
+                        </div>
+                        <div className="col-span-2">
+                          <dt>Completed</dt>
+                          <dd className="text-foreground">
+                            {formatDateTime(a.completed_at)}
+                          </dd>
+                        </div>
+                      </dl>
+                    </div>
                   </article>
                 );
               })}

@@ -2,7 +2,12 @@ import { useDataQuery } from "@/lib/use-data";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
-import { Field, PageHeader, StatusBadge, formatDateTime } from "@/components/primitives";
+import {
+  Field,
+  PageHeader,
+  StatusBadge,
+  formatDateTime,
+} from "@/components/primitives";
 import { EmptyBlock, QueryBoundary } from "@/components/states";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,7 +17,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   Table,
   TableBody,
@@ -22,6 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { agentActivityQuery, investigationsQuery } from "@/lib/queries";
+import { normalizeAiOutput } from "@/lib/ai-output";
 import type { DashboardInvestigation } from "@/lib/db-types";
 
 export const Route = createFileRoute("/_authenticated/investigations")({
@@ -36,7 +47,8 @@ export const Route = createFileRoute("/_authenticated/investigations")({
       { property: "og:title", content: "Investigations — ProductPulse AI" },
       {
         property: "og:description",
-        content: "Anomaly investigations with severity, status and agent finding counts.",
+        content:
+          "Anomaly investigations with severity, status and agent finding counts.",
       },
     ],
   }),
@@ -44,7 +56,8 @@ export const Route = createFileRoute("/_authenticated/investigations")({
 });
 
 function InvestigationsPage() {
-  const { data, isPending, isError, refetch } = useDataQuery(investigationsQuery);
+  const { data, isPending, isError, refetch } =
+    useDataQuery(investigationsQuery);
   const [search, setSearch] = useState("");
   const [severity, setSeverity] = useState("all");
   const [status, setStatus] = useState("all");
@@ -52,11 +65,17 @@ function InvestigationsPage() {
 
   const rows = data ?? [];
   const severities = useMemo(
-    () => Array.from(new Set(rows.map((r) => r.severity).filter(Boolean))) as string[],
+    () =>
+      Array.from(
+        new Set(rows.map((r) => r.severity).filter(Boolean)),
+      ) as string[],
     [rows],
   );
   const statuses = useMemo(
-    () => Array.from(new Set(rows.map((r) => r.status).filter(Boolean))) as string[],
+    () =>
+      Array.from(
+        new Set(rows.map((r) => r.status).filter(Boolean)),
+      ) as string[],
     [rows],
   );
 
@@ -157,7 +176,9 @@ function InvestigationsPage() {
                         <TableCell className="text-muted-foreground">
                           {formatDateTime(r.detected_at)}
                         </TableCell>
-                        <TableCell className="num">{r.agent_finding_count ?? 0}</TableCell>
+                        <TableCell className="num">
+                          {r.agent_finding_count ?? 0}
+                        </TableCell>
                         <TableCell className="num max-w-[220px] truncate text-xs text-muted-foreground">
                           {r.id}
                         </TableCell>
@@ -186,17 +207,27 @@ function InvestigationDrawer({
   investigation: DashboardInvestigation | null;
   onClose: () => void;
 }) {
-  const { data, isPending, isError, refetch } = useDataQuery(agentActivityQuery, { enabled: Boolean(investigation) });
+  const { data, isPending, isError, refetch } = useDataQuery(
+    agentActivityQuery,
+    { enabled: Boolean(investigation) },
+  );
 
   const findings = (data ?? []).filter(
     (a) => !investigation || a.investigation_id === investigation.id,
   );
 
   return (
-    <Sheet open={Boolean(investigation)} onOpenChange={(o) => (!o ? onClose() : undefined)}>
+    <Sheet
+      open={Boolean(investigation)}
+      onOpenChange={(o) => (!o ? onClose() : undefined)}
+    >
       <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
         <SheetHeader>
-          <SheetTitle>{investigation?.scenario_name ?? investigation?.title ?? "Investigation"}</SheetTitle>
+          <SheetTitle>
+            {investigation?.scenario_name ??
+              investigation?.title ??
+              "Investigation"}
+          </SheetTitle>
         </SheetHeader>
         {investigation ? (
           <div className="space-y-5 p-4">
@@ -207,8 +238,12 @@ function InvestigationDrawer({
               <Field label="Status">
                 <StatusBadge value={investigation.status} />
               </Field>
-              <Field label="Detected">{formatDateTime(investigation.detected_at)}</Field>
-              <Field label="Agent findings">{investigation.agent_finding_count ?? 0}</Field>
+              <Field label="Detected">
+                {formatDateTime(investigation.detected_at)}
+              </Field>
+              <Field label="Agent findings">
+                {investigation.agent_finding_count ?? 0}
+              </Field>
             </div>
             <Field label="Investigation ID">
               <span className="num break-all text-xs">{investigation.id}</span>
@@ -231,17 +266,27 @@ function InvestigationDrawer({
               >
                 {(list) => (
                   <ul className="space-y-3">
-                    {list.map((a, i) => (
-                      <li key={a.id ?? i} className="rounded-md border border-border p-3">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm font-medium">{a.agent_name ?? "Agent"}</p>
-                          <StatusBadge value={a.status} />
-                        </div>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {a.finding_summary ?? "No summary provided."}
-                        </p>
-                      </li>
-                    ))}
+                    {list.map((a, i) => {
+                      const summary = normalizeAiOutput(
+                        a.finding_summary,
+                      ).summary;
+                      return (
+                        <li
+                          key={a.id ?? i}
+                          className="rounded-md border border-border p-3"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-medium">
+                              {a.agent_name ?? "Agent"}
+                            </p>
+                            <StatusBadge value={a.status} />
+                          </div>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {summary || "No summary provided."}
+                          </p>
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </QueryBoundary>
