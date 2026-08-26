@@ -32,7 +32,11 @@ import type {
   DashboardInvestigation,
 } from "@/lib/db-types";
 import type { DecisionValue } from "@/lib/n8n";
-import { decisionsQuery, investigationsQuery } from "@/lib/queries";
+import {
+  approvalDecisionsQuery,
+  decisionsQuery,
+  investigationsQuery,
+} from "@/lib/queries";
 
 export const Route = createFileRoute("/_authenticated/recommendations")({
   head: () => ({
@@ -58,6 +62,7 @@ const decisionLabel: Record<DecisionValue, string> = {
 
 function RecommendationsPage() {
   const query = useDataQuery(decisionsQuery);
+  const approvals = useDataQuery(approvalDecisionsQuery);
   const investigations = useDataQuery(investigationsQuery);
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -85,12 +90,44 @@ function RecommendationsPage() {
       ),
     [investigations.data],
   );
+  const decidedRecommendationIds = useMemo(() => {
+    const latest = new Map<string, { decision: string; timestamp: number }>();
+
+    for (const approval of approvals.data ?? []) {
+      if (!approval.recommendation_id) continue;
+      const decision = (approval.decision ?? "")
+        .toLowerCase()
+        .replace(/[\s-]+/g, "_");
+      const timestamp = Date.parse(
+        approval.decided_at ?? approval.created_at ?? "",
+      );
+      const previous = latest.get(approval.recommendation_id);
+      if (!previous || (Number.isFinite(timestamp) ? timestamp : 0) >= previous.timestamp) {
+        latest.set(approval.recommendation_id, {
+          decision,
+          timestamp: Number.isFinite(timestamp) ? timestamp : 0,
+        });
+      }
+    }
+
+    return new Set(
+      [...latest.entries()]
+        .filter(([, value]) =>
+          ["approved", "rejected", "changes_requested"].includes(
+            value.decision,
+          ),
+        )
+        .map(([recommendationId]) => recommendationId),
+    );
+  }, [approvals.data]);
+
   const actionableRecommendations = query.data?.filter((row) => {
     const state = (row.approval_state ?? "pending")
       .toLowerCase()
       .replace(/[\s-]+/g, "_");
     return (
       !processedIds.has(row.id) &&
+      !decidedRecommendationIds.has(row.id) &&
       (state === "pending" || state === "pending_approval")
     );
   });
@@ -158,6 +195,7 @@ function RecommendationsPage() {
       setReason("");
       setProgress(null);
       void query.refetch();
+      void approvals.refetch();
     } catch (caught) {
       const message =
         caught instanceof Error ? caught.message : "The request failed.";
@@ -195,11 +233,14 @@ function RecommendationsPage() {
       </div>
 
       <QueryBoundary
-        isPending={query.isPending || investigations.isPending}
-        isError={query.isError || investigations.isError}
+        isPending={
+          query.isPending || approvals.isPending || investigations.isPending
+        }
+        isError={query.isError || approvals.isError || investigations.isError}
         data={actionableRecommendations}
         refetch={() => {
           void query.refetch();
+          void approvals.refetch();
           void investigations.refetch();
         }}
         loading={<LoadingCards count={3} />}

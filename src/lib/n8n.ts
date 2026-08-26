@@ -10,6 +10,13 @@ const SIGNAL_DETECTION_WEBHOOK =
   "https://krishaws17.app.n8n.cloud/webhook/productpulse-signal-detection";
 const HUMAN_APPROVAL_WEBHOOK =
   "https://krishaws17.app.n8n.cloud/webhook/productpulse-human-approval";
+const INVESTIGATION_DELETE_WEBHOOK = (
+  import.meta.env["VITE_N8N_INVESTIGATION_DELETE_WEBHOOK"] as string | undefined
+)?.trim();
+
+export const investigationDeletionConfigured = Boolean(
+  INVESTIGATION_DELETE_WEBHOOK,
+);
 
 export class WebhookError extends Error {
   constructor(message: string) {
@@ -29,7 +36,8 @@ function safeErrorDetail(body: string): string {
       const record = parsed as Record<string, unknown>;
       for (const key of ["message", "error", "hint", "detail"]) {
         const value = record[key];
-        if (typeof value === "string" && value.trim()) return value.trim().slice(0, 200);
+        if (typeof value === "string" && value.trim())
+          return value.trim().slice(0, 200);
       }
       return "";
     }
@@ -63,14 +71,19 @@ async function postJson(
   } catch (caught) {
     if ((caught as { name?: string })?.name === "AbortError") throw caught;
     console.error(`[n8n:${label}] network error`, caught);
-    throw new WebhookError("Could not reach the automation service. Check your connection.");
+    throw new WebhookError(
+      "Could not reach the automation service. Check your connection.",
+    );
   }
 
   const text = await response.text();
   const ms = Math.round(performance.now() - startedAt);
 
   if (!response.ok) {
-    console.error(`[n8n:${label}] failed ${response.status} after ${ms}ms`, text);
+    console.error(
+      `[n8n:${label}] failed ${response.status} after ${ms}ms`,
+      text,
+    );
     const detail = safeErrorDetail(text);
     throw new WebhookError(
       `Workflow returned ${response.status} ${response.statusText}${detail ? ` — ${detail}` : ""}`,
@@ -95,7 +108,9 @@ function postOnce(
 ): Promise<unknown> {
   const existing = inFlight.get(key);
   if (existing) {
-    console.info(`[n8n:${label}] duplicate suppressed — reusing in-flight request`);
+    console.info(
+      `[n8n:${label}] duplicate suppressed — reusing in-flight request`,
+    );
     return existing;
   }
   const request = postJson(url, payload, label, signal).finally(() => {
@@ -147,13 +162,47 @@ export function postApprovalDecision(
 }
 
 /**
+ * Permanently removes one investigation through a dedicated, server-side n8n
+ * workflow. The workflow owns all cascading/archival rules; the browser never
+ * deletes Supabase rows directly.
+ */
+export function postInvestigationDeletion(
+  input: { investigationId: string; requestedBy: string },
+  signal?: AbortSignal,
+): Promise<unknown> {
+  if (!INVESTIGATION_DELETE_WEBHOOK) {
+    return Promise.reject(
+      new WebhookError(
+        "Investigation deletion is not configured. Add VITE_N8N_INVESTIGATION_DELETE_WEBHOOK in Vercel after publishing the deletion workflow in n8n.",
+      ),
+    );
+  }
+  return postOnce(
+    `investigation:delete:${input.investigationId}`,
+    INVESTIGATION_DELETE_WEBHOOK,
+    {
+      action: "delete",
+      investigation_id: input.investigationId,
+      requested_by: input.requestedBy,
+    },
+    "investigation-delete",
+    signal,
+  );
+}
+
+/**
  * Polls a read-only predicate every `intervalMs` until it returns true or the
  * timeout elapses. A timeout is not a failure — the workflow keeps running.
  * Aborting via `signal` stops the loop immediately (used on unmount).
  */
 export async function pollUntil(
   predicate: () => Promise<boolean>,
-  options?: { intervalMs?: number; timeoutMs?: number; label?: string; signal?: AbortSignal },
+  options?: {
+    intervalMs?: number;
+    timeoutMs?: number;
+    label?: string;
+    signal?: AbortSignal;
+  },
 ): Promise<boolean> {
   const intervalMs = options?.intervalMs ?? 5000;
   const timeoutMs = options?.timeoutMs ?? 180_000;

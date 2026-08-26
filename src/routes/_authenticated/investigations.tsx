@@ -1,6 +1,9 @@
 import { useDataQuery } from "@/lib/use-data";
 import { createFileRoute } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import {
   Field,
@@ -10,6 +13,18 @@ import {
 } from "@/components/primitives";
 import { EmptyBlock, QueryBoundary } from "@/components/states";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -34,6 +49,11 @@ import {
 import { agentActivityQuery, investigationsQuery } from "@/lib/queries";
 import { normalizeAiOutput } from "@/lib/ai-output";
 import type { DashboardInvestigation } from "@/lib/db-types";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  investigationDeletionConfigured,
+  postInvestigationDeletion,
+} from "@/lib/n8n";
 
 export const Route = createFileRoute("/_authenticated/investigations")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -104,7 +124,7 @@ function InvestigationsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Investigations"
-        description="Every investigation begins with a deterministic rule trigger. AI agents attach findings afterwards."
+        description="Every investigation begins with a deterministic rule trigger. Closed and rejected records remain visible as audit history; use the status filter or the controlled delete action when removal is required."
       />
 
       <div className="panel space-y-4 p-5">
@@ -208,6 +228,10 @@ function InvestigationsPage() {
       <InvestigationDrawer
         investigation={selected}
         onClose={() => setSelected(null)}
+        onDeleted={async () => {
+          setSelected(null);
+          await refetch();
+        }}
       />
     </div>
   );
@@ -216,10 +240,15 @@ function InvestigationsPage() {
 function InvestigationDrawer({
   investigation,
   onClose,
+  onDeleted,
 }: {
   investigation: DashboardInvestigation | null;
   onClose: () => void;
+  onDeleted: () => Promise<void>;
 }) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [isDeleting, setIsDeleting] = useState(false);
   const { data, isPending, isError, refetch } = useDataQuery(
     agentActivityQuery,
     { enabled: Boolean(investigation) },
@@ -228,6 +257,30 @@ function InvestigationDrawer({
   const findings = (data ?? []).filter(
     (a) => !investigation || a.investigation_id === investigation.id,
   );
+
+  async function deleteInvestigation() {
+    if (!investigation || isDeleting) return;
+    setIsDeleting(true);
+    try {
+      await postInvestigationDeletion({
+        investigationId: investigation.id,
+        requestedBy: user?.email ?? "unknown",
+      });
+      toast.success("Investigation deleted", {
+        description: "The audit views are being refreshed.",
+      });
+      await queryClient.invalidateQueries();
+      await onDeleted();
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "The investigation could not be deleted.";
+      toast.error("Deletion failed", { description: message });
+    } finally {
+      setIsDeleting(false);
+    }
+  }
 
   return (
     <Sheet
@@ -303,6 +356,55 @@ function InvestigationDrawer({
                   </ul>
                 )}
               </QueryBoundary>
+            </div>
+
+            <div className="rounded-md border border-destructive/25 bg-destructive/5 p-4">
+              <p className="text-sm font-semibold">Investigation lifecycle</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Deletion removes this investigation through the n8n governance
+                workflow. Related findings, hypotheses, recommendations,
+                approvals and experiments must be handled by that workflow
+                before the parent record is removed.
+              </p>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    className="mt-3"
+                    variant="destructive"
+                    size="sm"
+                    disabled={!investigationDeletionConfigured || isDeleting}
+                  >
+                    <Trash2 className="size-4" />
+                    {isDeleting ? "Deleting…" : "Delete investigation"}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      Delete this investigation?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This is a destructive, audited n8n action for
+                      investigation {investigation.id}. It cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={() => void deleteInvestigation()}
+                    >
+                      Delete permanently
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              {!investigationDeletionConfigured ? (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Deletion is disabled until
+                  VITE_N8N_INVESTIGATION_DELETE_WEBHOOK is configured.
+                </p>
+              ) : null}
             </div>
           </div>
         ) : null}

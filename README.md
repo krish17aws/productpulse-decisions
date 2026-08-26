@@ -1,5 +1,37 @@
 # ProductPulse Decisions
 
+Current UI release: **v1.1.0**
+
+## Investigation lifecycle
+
+The application is read-only with respect to Supabase. Scenario actions,
+recommendation decisions, and investigation deletion are sent to n8n production
+webhooks. The browser never receives or uses a service-role key.
+
+To enable the confirmed **Delete investigation** action, publish a dedicated n8n
+workflow and set `VITE_N8N_INVESTIGATION_DELETE_WEBHOOK` in the deployment
+environment. The workflow receives:
+
+```json
+{
+  "action": "delete",
+  "investigation_id": "<investigations.id>",
+  "requested_by": "<authenticated user email>"
+}
+```
+
+The workflow must validate the request, record an audit event, and handle child
+records in dependency order before removing the investigation. Until this URL is
+configured, the destructive button remains disabled.
+
+## Why several hypotheses appear
+
+PP-03 intentionally stores multiple ranked root-cause hypotheses for one
+investigation. They are competing theories, not separate incidents or confirmed
+facts. The Decision Room now selects one investigation at a time, removes
+duplicate rank/text rows, sorts the primary hypothesis first, and labels the
+count explicitly.
+
 Build a responsive enterprise SaaS dashboard named “ProductPulse AI — Autonomous Product Decision Room”.
 
 IMPORTANT BACKEND RULES:

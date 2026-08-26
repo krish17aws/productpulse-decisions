@@ -38,7 +38,8 @@ export const Route = createFileRoute("/_authenticated/experiments")({
       { property: "og:title", content: "Experiments — ProductPulse AI" },
       {
         property: "og:description",
-        content: "Control versus treatment experiment outcomes tied back to recommendations.",
+        content:
+          "Control versus treatment experiment outcomes tied back to recommendations.",
       },
     ],
   }),
@@ -64,8 +65,14 @@ function formatUplift(value?: number | null) {
 
 function latestFinding(findings: AgentFinding[]): AgentFinding | undefined {
   return [...findings].sort(
-    (a, b) => new Date(b.completed_at ?? 0).getTime() - new Date(a.completed_at ?? 0).getTime(),
+    (a, b) =>
+      new Date(b.completed_at ?? 0).getTime() -
+      new Date(a.completed_at ?? 0).getTime(),
   )[0];
+}
+
+function referencesExperiment(finding: AgentFinding, experimentId: string) {
+  return JSON.stringify(finding).includes(experimentId);
 }
 
 function toText(value: unknown): string {
@@ -100,23 +107,47 @@ function ExperimentsPage() {
         {(rows) => (
           <div className="space-y-5">
             {rows.map((e) => {
-              const linked = (results.data ?? []).filter((r) => r.experiment_id === e.id);
+              const linked = (results.data ?? []).filter(
+                (r) => r.experiment_id === e.id,
+              );
               const allPassed =
-                linked.length > 0 && linked.every((r) => r.guardrail_breached === false);
+                linked.length > 0 &&
+                linked.every((r) => r.guardrail_breached === false);
 
               const recommendation = (decisions.data ?? []).find(
                 (d) => d.id === e.recommendation_id,
               );
               const investigationId = recommendation?.investigation_id ?? null;
-              const outcomeFinding = investigationId
-                ? latestFinding(
-                    (findings.data ?? []).filter(
-                      (f) =>
-                        f.investigation_id === investigationId &&
-                        f.agent_name === "Outcome Monitoring Agent",
-                    ),
+              const investigationExperiments = (experiments.data ?? []).filter(
+                (candidate) => {
+                  const candidateRecommendation = (decisions.data ?? []).find(
+                    (d) => d.id === candidate.recommendation_id,
+                  );
+                  return (
+                    candidateRecommendation?.investigation_id ===
+                    investigationId
+                  );
+                },
+              );
+              const possibleOutcomes = investigationId
+                ? (findings.data ?? []).filter(
+                    (f) =>
+                      f.investigation_id === investigationId &&
+                      f.agent_name === "Outcome Monitoring Agent",
                   )
-                : undefined;
+                : [];
+              const exactOutcome = possibleOutcomes.filter((finding) =>
+                referencesExperiment(finding, e.id),
+              );
+              // A finding may safely fall back to the investigation only when
+              // that investigation has exactly one experiment.
+              const outcomeFinding = latestFinding(
+                exactOutcome.length > 0
+                  ? exactOutcome
+                  : investigationExperiments.length === 1
+                    ? possibleOutcomes
+                    : [],
+              );
               const finalOutcome = outcomeFinding
                 ? outcomeFromFinding(outcomeFinding.finding_summary)
                 : null;
@@ -125,7 +156,9 @@ function ExperimentsPage() {
                 <article key={e.id} className="panel space-y-4 p-6">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <h2 className="text-base font-semibold">{e.name ?? "Experiment"}</h2>
+                      <h2 className="text-base font-semibold">
+                        {e.name ?? "Experiment"}
+                      </h2>
                       <p className="num mt-1 text-xs text-muted-foreground">
                         Recommendation: {e.recommendation_id ?? "—"}
                       </p>
@@ -134,13 +167,22 @@ function ExperimentsPage() {
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-2">
-                    <Field label="Success criterion">{toText(e.success_criterion)}</Field>
-                    <Field label="Guardrail metrics">{toText(e.guardrail_metrics)}</Field>
+                    <Field label="Success criterion">
+                      {toText(e.success_criterion)}
+                    </Field>
+                    <Field label="Guardrail metrics">
+                      {toText(e.guardrail_metrics)}
+                    </Field>
                     <Field label="Final outcome">
-                      {finalOutcome ? <StatusBadge value={finalOutcome} /> : "Pending"}
+                      {finalOutcome ? (
+                        <StatusBadge value={finalOutcome} />
+                      ) : (
+                        "Pending"
+                      )}
                     </Field>
                     <Field label="Window">
-                      {formatDateTime(e.started_at)} → {formatDateTime(e.completed_at)}
+                      {formatDateTime(e.started_at)} →{" "}
+                      {formatDateTime(e.completed_at)}
                     </Field>
                   </div>
 
@@ -180,7 +222,10 @@ function ExperimentsPage() {
                               const key = `${r.experiment_id}-${r.metric_name}-${index}`;
                               return [
                                 <TableRow key={`${key}-control`}>
-                                  <TableCell rowSpan={2} className="font-medium">
+                                  <TableCell
+                                    rowSpan={2}
+                                    className="font-medium"
+                                  >
                                     {r.metric_name ?? "—"}
                                   </TableCell>
                                   <TableCell>Control</TableCell>
@@ -195,8 +240,16 @@ function ExperimentsPage() {
                                   </TableCell>
                                   <TableCell rowSpan={2}>
                                     <StatusBadge
-                                      value={r.guardrail_breached ? "Breached" : "Passed"}
-                                      tone={r.guardrail_breached ? "danger" : "success"}
+                                      value={
+                                        r.guardrail_breached
+                                          ? "Breached"
+                                          : "Passed"
+                                      }
+                                      tone={
+                                        r.guardrail_breached
+                                          ? "danger"
+                                          : "success"
+                                      }
                                     />
                                   </TableCell>
                                 </TableRow>,

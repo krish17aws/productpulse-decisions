@@ -75,6 +75,7 @@ export interface Hypothesis {
   confidence?: number | null;
   status?: string | null;
   is_primary?: boolean | null;
+  rank?: number | null;
   created_at?: string | null;
   [key: string]: unknown;
 }
@@ -90,6 +91,15 @@ export interface DashboardDecision {
   confidence?: number | null;
   approval_state?: string | null;
   experiment_state?: string | null;
+  created_at?: string | null;
+  [key: string]: unknown;
+}
+
+export interface ApprovalDecision {
+  id?: string | null;
+  recommendation_id: string;
+  decision?: string | null;
+  decided_at?: string | null;
   created_at?: string | null;
   [key: string]: unknown;
 }
@@ -120,6 +130,7 @@ export interface ExperimentResult {
 }
 
 export interface AgentFinding {
+  id?: string | null;
   investigation_id?: string | null;
   agent_name?: string | null;
   finding_summary?: string | null;

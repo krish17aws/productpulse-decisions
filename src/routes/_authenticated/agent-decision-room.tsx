@@ -78,9 +78,23 @@ function AgentDecisionRoom() {
   const scopedAgents = (agents.data ?? []).filter(
     (row) => row.investigation_id === effectiveInvestigationId,
   );
-  const scopedHypotheses = (hypotheses.data ?? []).filter(
-    (row) => row.investigation_id === effectiveInvestigationId,
-  );
+  const scopedHypotheses = Array.from(
+    new Map(
+      (hypotheses.data ?? [])
+        .filter((row) => row.investigation_id === effectiveInvestigationId)
+        .map((row) => [
+          `${row.rank ?? ""}:${row.hypothesis ?? row.description ?? row.id}`,
+          row,
+        ]),
+    ).values(),
+  ).sort((a, b) => {
+    if (Boolean(a.is_primary) !== Boolean(b.is_primary)) {
+      return a.is_primary ? -1 : 1;
+    }
+    return (
+      (a.rank ?? Number.MAX_SAFE_INTEGER) - (b.rank ?? Number.MAX_SAFE_INTEGER)
+    );
+  });
 
   return (
     <div className="space-y-6">
@@ -127,7 +141,8 @@ function AgentDecisionRoom() {
             <SelectItem value="latest">Latest investigation</SelectItem>
             {investigationRows.map((row) => (
               <SelectItem key={row.id} value={row.id}>
-                {row.scenario_name ?? row.title ?? row.id}
+                {row.scenario_name ?? row.title ?? "Investigation"} ·{" "}
+                {formatDateTime(row.detected_at)} · {row.id.slice(0, 8)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -234,7 +249,21 @@ function AgentDecisionRoom() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold">Structured hypotheses</h2>
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-semibold">
+              Ranked root-cause hypotheses
+            </h2>
+            <p className="mt-1 max-w-3xl text-xs text-muted-foreground">
+              These are competing explanations generated for the selected
+              investigation—not confirmed facts. The primary, highest-ranked
+              theory is shown first.
+            </p>
+          </div>
+          <span className="text-xs text-muted-foreground">
+            {scopedHypotheses.length} for this investigation
+          </span>
+        </div>
         <QueryBoundary
           isPending={hypotheses.isPending || investigations.isPending}
           isError={hypotheses.isError || investigations.isError}

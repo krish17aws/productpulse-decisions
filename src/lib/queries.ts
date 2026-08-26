@@ -2,6 +2,7 @@ import { externalSupabase as supabase } from "@/integrations/supabase/external-c
 import { supabaseConfigured } from "@/lib/supabase-status";
 import type {
   AgentFinding,
+  ApprovalDecision,
   DashboardAgentActivity,
   DashboardDecision,
   DashboardFunnel,
@@ -79,6 +80,7 @@ export const investigationsQuery = tableQuery<DashboardInvestigation>("dashboard
 export const agentActivityQuery = tableQuery<DashboardAgentActivity>("dashboard_agent_activity");
 export const hypothesesQuery = tableQuery<Hypothesis>("hypotheses");
 export const decisionsQuery = tableQuery<DashboardDecision>("dashboard_decisions");
+export const approvalDecisionsQuery = tableQuery<ApprovalDecision>("approvals");
 export const experimentsQuery = tableQuery<Experiment>("experiments");
 export const experimentResultsQuery = tableQuery<ExperimentResult>("experiment_results");
 export const agentFindingsQuery = tableQuery<AgentFinding>("agent_findings");

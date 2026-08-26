@@ -18,6 +18,7 @@ import { useState } from "react";
 
 import { externalSupabase as supabase } from "@/integrations/supabase/external-client";
 import { useAuth } from "@/hooks/use-auth";
+import { APP_VERSION } from "@/lib/app-version";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -78,6 +79,12 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
       </div>
       <NavList {...(onNavigate ? { onNavigate } : {})} />
       <div className="border-t border-sidebar-border p-3">
+        <div className="mb-2 flex items-center justify-between gap-2 px-2 text-[11px] text-sidebar-foreground/50">
+          <span>Production build</span>
+          <span className="num rounded border border-sidebar-border px-1.5 py-0.5">
+            v{APP_VERSION}
+          </span>
+        </div>
         <p className="truncate px-2 pb-2 text-xs text-sidebar-foreground/60">
           {user?.email ?? "Signed in"}
         </p>
