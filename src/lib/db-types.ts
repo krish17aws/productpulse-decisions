@@ -84,6 +84,7 @@ export interface DashboardDecision {
   id: string;
   investigation_id?: string | null;
   recommendation?: string | null;
+  recommended_action?: string | null;
   rationale?: string | null;
   expected_impact?: string | null;
   risks?: string | null;

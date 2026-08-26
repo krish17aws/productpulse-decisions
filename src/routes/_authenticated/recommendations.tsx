@@ -60,6 +60,14 @@ const decisionLabel: Record<DecisionValue, string> = {
   rejected: "Reject recommendation",
 };
 
+function cleanStoredList(value?: string | null) {
+  if (!value) return "—";
+  return value
+    .trim()
+    .replace(/^=\s*/, "")
+    .replace(/^•\s*/gm, "- ");
+}
+
 function RecommendationsPage() {
   const query = useDataQuery(decisionsQuery);
   const approvals = useDataQuery(approvalDecisionsQuery);
@@ -75,6 +83,7 @@ function RecommendationsPage() {
   const [requestError, setRequestError] = useState<string | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [queueView, setQueueView] = useState<"pending" | "history">("pending");
   const [processedIds, setProcessedIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -90,7 +99,7 @@ function RecommendationsPage() {
       ),
     [investigations.data],
   );
-  const decidedRecommendationIds = useMemo(() => {
+  const latestDecisionByRecommendationId = useMemo(() => {
     const latest = new Map<string, { decision: string; timestamp: number }>();
 
     for (const approval of approvals.data ?? []) {
@@ -110,16 +119,22 @@ function RecommendationsPage() {
       }
     }
 
-    return new Set(
-      [...latest.entries()]
-        .filter(([, value]) =>
-          ["approved", "rejected", "changes_requested"].includes(
-            value.decision,
-          ),
-        )
-        .map(([recommendationId]) => recommendationId),
-    );
+    return latest;
   }, [approvals.data]);
+
+  const decidedRecommendationIds = useMemo(
+    () =>
+      new Set(
+        [...latestDecisionByRecommendationId.entries()]
+          .filter(([, value]) =>
+            ["approved", "rejected", "changes_requested"].includes(
+              value.decision,
+            ),
+          )
+          .map(([recommendationId]) => recommendationId),
+      ),
+    [latestDecisionByRecommendationId],
+  );
 
   const actionableRecommendations = query.data?.filter((row) => {
     const state = (row.approval_state ?? "pending")
@@ -131,6 +146,13 @@ function RecommendationsPage() {
       (state === "pending" || state === "pending_approval")
     );
   });
+  const historicalRecommendations = query.data?.filter((row) =>
+    decidedRecommendationIds.has(row.id),
+  );
+  const displayedRecommendations =
+    queueView === "pending"
+      ? actionableRecommendations
+      : historicalRecommendations;
 
   function openDecision(row: DashboardDecision, decision: DecisionValue) {
     if (busy) return;
@@ -227,9 +249,27 @@ function RecommendationsPage() {
         <p className="mt-3 text-sm text-muted-foreground">
           A hypothesis is a ranked possible explanation for an issue. It is
           evidence for the decision—not the action itself. This page only shows
-          pending recommended actions; completed decisions remain in the audit
-          data but leave this queue.
+          pending actions and completed decisions are separated so the audit
+          history remains visible without cluttering the PM queue.
         </p>
+        <div className="mt-4 flex gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={queueView === "pending" ? "default" : "outline"}
+            onClick={() => setQueueView("pending")}
+          >
+            Pending decisions ({actionableRecommendations?.length ?? 0})
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={queueView === "history" ? "default" : "outline"}
+            onClick={() => setQueueView("history")}
+          >
+            Decision history ({historicalRecommendations?.length ?? 0})
+          </Button>
+        </div>
       </div>
 
       <QueryBoundary
@@ -237,19 +277,29 @@ function RecommendationsPage() {
           query.isPending || approvals.isPending || investigations.isPending
         }
         isError={query.isError || approvals.isError || investigations.isError}
-        data={actionableRecommendations}
+        data={displayedRecommendations}
         refetch={() => {
           void query.refetch();
           void approvals.refetch();
           void investigations.refetch();
         }}
         loading={<LoadingCards count={3} />}
-        emptyTitle="No pending recommendations"
-        emptyDescription="All recommendations have been decided, or no investigation has produced a new action yet."
+        emptyTitle={
+          queueView === "pending"
+            ? "No pending recommendations"
+            : "No decision history"
+        }
+        emptyDescription={
+          queueView === "pending"
+            ? "All existing recommendations have been decided, or PP-03 has not produced a recommendation for the selected issue yet. Open Decision History to review older actions."
+            : "No approved, rejected or changes-requested recommendations were returned by the approvals table."
+        }
       >
         {(rows) => (
           <div className="space-y-4">
             {rows.map((row) => {
+              const recordedDecision =
+                latestDecisionByRecommendationId.get(row.id)?.decision;
               const investigation = row.investigation_id
                 ? investigationById.get(row.investigation_id)
                 : undefined;
@@ -270,10 +320,12 @@ function RecommendationsPage() {
                 />
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <h2 className="max-w-3xl text-base font-semibold [overflow-wrap:anywhere]">
-                    {row.recommendation ?? "Recommendation"}
+                    {row.recommendation ?? row.recommended_action ?? "Recommendation"}
                   </h2>
                   <div className="flex shrink-0 flex-wrap gap-2">
-                    <StatusBadge value={row.approval_state ?? "pending"} />
+                    <StatusBadge
+                      value={recordedDecision ?? row.approval_state ?? "pending"}
+                    />
                     <StatusBadge
                       value={row.experiment_state ?? "not started"}
                       tone="neutral"
@@ -319,6 +371,7 @@ function RecommendationsPage() {
                     </span>
                     <span>Created {formatDateTime(row.created_at)}</span>
                   </div>
+                  {queueView === "pending" ? (
                   <div className="flex flex-wrap gap-2">
                     <Button
                       size="sm"
@@ -344,6 +397,12 @@ function RecommendationsPage() {
                       Reject
                     </Button>
                   </div>
+                  ) : (
+                    <StatusBadge
+                      value={recordedDecision ?? "decided"}
+                      tone="neutral"
+                    />
+                  )}
                 </div>
               </article>
               );
@@ -454,21 +513,29 @@ function RecommendationsPage() {
         onOpenChange={(open) => {
           if (!open) setAnalysis(null);
         }}
-        title={analysis?.recommendation ?? "Recommendation analysis"}
+        title={
+          analysis?.recommendation ??
+          analysis?.recommended_action ??
+          "Recommendation analysis"
+        }
         description="Stored recommendation details, formatted for review without changing the source data."
         value={analysis?.rationale}
         extra={
           analysis ? (
-            <div className="grid gap-4 rounded-lg border border-border p-4 sm:grid-cols-2">
-              <Field label="Expected impact">
-                <MarkdownText text={analysis.expected_impact ?? "—"} />
-              </Field>
-              <Field label="Risks">
-                <MarkdownText text={analysis.risks ?? "—"} />
-              </Field>
-              <div className="sm:col-span-2">
+            <div className="space-y-3">
+              <div className="rounded-lg border border-border bg-muted/20 p-4">
+                <Field label="Expected impact">
+                  <MarkdownText text={cleanStoredList(analysis.expected_impact)} />
+                </Field>
+              </div>
+              <div className="rounded-lg border border-border bg-muted/20 p-4">
+                <Field label="Risks">
+                  <MarkdownText text={cleanStoredList(analysis.risks)} />
+                </Field>
+              </div>
+              <div className="rounded-lg border border-border bg-muted/20 p-4">
                 <Field label="Guardrails">
-                  <MarkdownText text={analysis.guardrails ?? "—"} />
+                  <MarkdownText text={cleanStoredList(analysis.guardrails)} />
                 </Field>
               </div>
             </div>

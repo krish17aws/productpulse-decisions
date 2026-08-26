@@ -78,6 +78,9 @@ function AgentDecisionRoom() {
   const scopedAgents = (agents.data ?? []).filter(
     (row) => row.investigation_id === effectiveInvestigationId,
   );
+  const synthesisCompleted = scopedAgents.some((row) =>
+    /root|synthesis|risk/i.test(row.agent_name ?? ""),
+  );
   const scopedHypotheses = Array.from(
     new Map(
       (hypotheses.data ?? [])
@@ -273,7 +276,11 @@ function AgentDecisionRoom() {
             void investigations.refetch();
           }}
           emptyTitle="No hypotheses recorded"
-          emptyDescription="Root-cause synthesis has not produced hypotheses for this investigation yet."
+          emptyDescription={
+            synthesisCompleted
+              ? "The synthesis stage completed but stored no hypothesis rows. Check the PP-03 Save Hypotheses node and its Supabase response."
+              : "PP-03 root-cause synthesis has not completed for this investigation. Check the latest PP-03 n8n execution; a Gemini 429 or invalid JSON response prevents hypotheses and the recommendation from being created."
+          }
         >
           {(rows) => (
             <div className="grid auto-rows-fr gap-4 md:grid-cols-2 xl:grid-cols-3">
